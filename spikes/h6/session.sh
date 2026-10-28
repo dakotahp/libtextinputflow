@@ -30,6 +30,12 @@ STEPS=(
   "End:-k End"
   "Ctrl+a:-M ctrl -k a -m ctrl"
 )
+if [ -n "${H6_STEPS:-}" ]; then
+  mapfile -t STEPS < "$H6_STEPS"
+fi
+if [ -n "${H6_QT_THEME:-}" ]; then
+  export QT_QPA_PLATFORMTHEME=$H6_QT_THEME
+fi
 
 run_case() {
   local toolkit=$1 widget=$2 app_name=$3

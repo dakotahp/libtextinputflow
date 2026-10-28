@@ -16,6 +16,8 @@ Debug switches:
 
 - `H6_ONLY=gtk4-entry` runs one case (`gtk4-entry`, `gtk4-textview`, `qt-lineedit`, `qt-plaintextedit`).
 - `H6_DUMP=1` writes each app's accessibility tree to `results.jsonl.log`.
+- `H6_STEPS=steps.txt` replaces the default key steps. Each line is `label:wtype args`, and the first line is usually `start:`.
+- `H6_QT_THEME=name` sets `QT_QPA_PLATFORMTHEME` for the Qt apps. Set `QT_PLUGIN_PATH` too, for a theme outside the system plugin folder.
 
 ## Results
 
