@@ -1,0 +1,10 @@
+start:
+Alt+Right:-M alt -k Right -m alt
+Home:-k Home
+Ctrl+Right:-M ctrl -k Right -m ctrl
+Home:-k Home
+Shift+Alt+Right:-M alt -M shift -k Right -m shift -m alt
+Home:-k Home
+End:-k End
+Alt+BackSpace:-M alt -k BackSpace -m alt
+Ctrl+a:-M ctrl -k a -m ctrl

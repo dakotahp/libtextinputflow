@@ -1,0 +1,4 @@
+entry start 0 -
+entry Ctrl+Right 5 -
+textview start 0 -
+textview Ctrl+Right 5 -
