@@ -1,7 +1,7 @@
 # TRD: libtextinputflow proof of concept
 
 **Date:** 2026-10-27
-**Status:** Draft
+**Status:** Published
 **Technical plan:** none. The approach comes from `docs/poc-brief.md` and the spike results in `spikes/h1` to `spikes/h6`.
 **Planner session:** linux-text-caret-poc [a3e9aa]
 
@@ -57,7 +57,7 @@ tests/e2e/                       end-to-end test (ticket #12)
 
 ### Public header (new): `include/textinputflow.h`
 
-This is the whole contract. Ticket 0 lands it exactly as written. Later tickets may not change it. A change needs the planner session.
+This is the whole contract. #19 lands it exactly as written. Later tickets may not change it. A change needs the planner session.
 
 ```c
 #ifndef TEXTINPUTFLOW_H
@@ -250,7 +250,7 @@ Control+a           = select-all
 
 It is installed to `<datadir>/textinputflow/bindings`.
 
-### Stub table (ticket 0 only)
+### Stub table (#19 only)
 
 Until ticket #8 lands, every context, from `tif_new()` or `tif_new_for_paths()`, ignores files and holds this fixed table. It is the 21 defaults above, except that `Control+Right` is blocked, plus four test bindings:
 
@@ -391,7 +391,7 @@ These are the signals and actions GTK's own bindings use, so GTK's movement and 
 
 A key the library does not mention reaches the built-in class bindings as before. If the library has no bindings at all, GTK behaves as stock.
 
-#### Beating app shortcuts (ticket 6)
+#### Beating app shortcuts (#20)
 
 GTK 4 runs app shortcuts in a window controller named `gtk-application-shortcuts`, in `GTK_PHASE_CAPTURE`. `gtk_window_set_application()` adds it (`gtkwindow.c:2963` to `2967` in 4.24.1). A widget's controller cannot run before it, so the patch adds one more controller to the window:
 
@@ -414,15 +414,15 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
 
 **Lanes:**
 
-- First: ticket 0
-- After ticket 0: #8, #10, #11
+- First: #19
+- After #19: #8, #10, #11
 - After #8: #9
-- After #11: ticket 6
+- After #11: #20
 - After #9, #10 and #11: #12
 
-Ticket 6 and #12 are independent of each other.
+#20 and #12 are independent of each other.
 
-### 0. Land the library contract with a stub
+### 0. #19: Land the library contract with a stub
 
 **What:** Create the Meson project, the public header exactly as written in "Public header", and a stub library that always holds the fixed stub table. This lets the Qt plugin (#10) and the GTK patch (#11) build and test against the real header while the real library (#8, #9) is written. The library has no file parsing and no watching yet.
 **Areas:** `meson.build`, `meson.options`, `LICENSE`, `include/textinputflow.h`, `lib/`, `tests/lib/`
@@ -444,7 +444,7 @@ Ticket 6 and #12 are independent of each other.
 
 **What:** Replace the stub table with real loading. Parse both bindings files with the format in "Bindings file format", merge them as in "Loading and merging", and answer lookups and reverse lookups from the result. Add the default distro file. File watching is ticket #9: here, `tif_fd` stays `-1` and `tif_refresh` returns `false`, but `tif_reload` works.
 **Areas:** `lib/`, `data/bindings`, `data/meson.build`, `tests/lib/`
-**Depends on:** contract (ticket 0)
+**Depends on:** contract (#19)
 **Size:** M
 
 **Acceptance criteria**
@@ -482,9 +482,9 @@ Ticket 6 and #12 are independent of each other.
 
 ### 3. #10: Qt platform theme plugin
 
-**What:** Build the `textinputflow` Qt platform theme plugin. It wraps the base theme as `spikes/h2/theme/tifwrap.cpp` does, and answers `keyBindings()` with the rules in "Qt plugin rules". It builds against the ticket 0 stub, so it can be finished before the real library exists.
+**What:** Build the `textinputflow` Qt platform theme plugin. It wraps the base theme as `spikes/h2/theme/tifwrap.cpp` does, and answers `keyBindings()` with the rules in "Qt plugin rules". It builds against the #19 stub, so it can be finished before the real library exists.
 **Areas:** `adapters/qt/`, `meson.build` (the `qt` feature option)
-**Depends on:** contract (ticket 0)
+**Depends on:** contract (#19)
 **Size:** M
 
 **Acceptance criteria**
@@ -505,9 +505,9 @@ Ticket 6 and #12 are independent of each other.
 
 ### 4. #11: GTK 4 patch
 
-**What:** Write the GTK 4.24.1 patch from "GTK patch rules", and a build script that applies it and builds GTK against this repo's library. `GtkText` (inside `GtkEntry`) and `GtkTextView` then take their text keys from the library. It builds against the ticket 0 stub, so it can be finished before the real library exists.
+**What:** Write the GTK 4.24.1 patch from "GTK patch rules", and a build script that applies it and builds GTK against this repo's library. `GtkText` (inside `GtkEntry`) and `GtkTextView` then take their text keys from the library. It builds against the #19 stub, so it can be finished before the real library exists.
 **Areas:** `adapters/gtk4/textinputflow.patch`, `adapters/gtk4/build-gtk.sh`, `adapters/gtk4/README.md`
-**Depends on:** contract (ticket 0)
+**Depends on:** contract (#19)
 **Size:** L
 
 **Acceptance criteria**
@@ -584,9 +584,9 @@ The e2e setup:
 - [ ] `tests/README.md` explains how to run the test, the needed packages, and why steps 2, 3, 7 and 12 differ between the toolkits.
 - [ ] `tests/harness/README.md` documents the `@sh` step and the `text` field.
 
-### 6. GTK 4: text bindings beat app shortcuts
+### 6. #20: GTK 4: text bindings beat app shortcuts
 
-**What:** In stock GTK 4, an app's own shortcut runs before a focused text field sees the key. Extend the GTK patch from #11 so that, in a focused `GtkText` or `GtkTextView`, a key bound to a command runs the command instead, as "Text bindings and app shortcuts" requires. This makes GTK match Qt. Follow "Beating app shortcuts (ticket 6)" in "GTK patch rules".
+**What:** In stock GTK 4, an app's own shortcut runs before a focused text field sees the key. Extend the GTK patch from #11 so that, in a focused `GtkText` or `GtkTextView`, a key bound to a command runs the command instead, as "Text bindings and app shortcuts" requires. This makes GTK match Qt. Follow "Beating app shortcuts (#20)" in "GTK patch rules".
 **Areas:** `adapters/gtk4/textinputflow.patch`, `adapters/gtk4/tests/`, `adapters/gtk4/README.md`
 **Depends on:** implementation (#11). It extends #11's patch and reuses its shared context and action table.
 **Size:** M
@@ -604,13 +604,13 @@ The e2e setup:
 
 ## Test Strategy
 
-- **Library unit tests (ticket 0, #8, #9)** are plain C programs run by `meson test`. They create temp folders and files, and set `HOME` and the XDG variables. Parsing is where implementations most often differ, so every error case in #8 has its own test that checks both the skip and the stderr line. Capture stderr by redirecting `fd 2` to a temp file around the call.
+- **Library unit tests (#19, #8, #9)** are plain C programs run by `meson test`. They create temp folders and files, and set `HOME` and the XDG variables. Parsing is where implementations most often differ, so every error case in #8 has its own test that checks both the skip and the stderr line. Capture stderr by redirecting `fd 2` to a temp file around the call.
 - **Watching (#9)** is timing-sensitive. Tests wait with `poll()` on `tif_fd` with a 1 s timeout, never with a fixed sleep, and they test the rename-over case, because that is how most editors save.
 - **Adapter checks (#10, #11)** run the existing harness against the stub table. The stub's non-default keys (Alt+arrows, blocked Ctrl+Right) prove the library is in control: a toolkit left at its native bindings fails those steps.
 - **Qt wrapping (#10)** needs the theme dump comparison, because a missed forwarding function shows up only as a wrong font, icon or dialog, which no caret test catches.
-- **GTK disabled build (#11, ticket 6)** keeps the patch honest: with `-Dtextinputflow=disabled`, the patched source must act as stock GTK.
-- **App shortcut tests (#10, ticket 6)** use test apps whose own shortcut moves the caret to the end (16). The caret position shows which side won: the library's word move (5 or 6), or the app (16).
-- **Input method composition** (ticket 6's preedit check, #11's controller order) has no automated test, because the headless session has no input method. Check it by hand with a real input method before shipping beyond the POC.
+- **GTK disabled build (#11, #20)** keeps the patch honest: with `-Dtextinputflow=disabled`, the patched source must act as stock GTK.
+- **App shortcut tests (#10, #20)** use test apps whose own shortcut moves the caret to the end (16). The caret position shows which side won: the library's word move (5 or 6), or the app (16).
+- **Input method composition** (#20's preedit check, #11's controller order) has no automated test, because the headless session has no input method. Check it by hand with a real input method before shipping beyond the POC.
 - **End-to-end (#12)** is the POC's proof. It is the only test that combines real files, live reload, and both toolkits.
 - **Harness traps** from the spikes apply to every GUI test: start AT-SPI by hand, keep one idle `wtype` running, use `/usr/bin/python3`, set `GSK_RENDERER=cairo`, set `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`, and pass library paths with `H6_LD_LIBRARY_PATH`. `spikes/h6/README.md` explains each.
 
