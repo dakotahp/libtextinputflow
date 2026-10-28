@@ -8,7 +8,7 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
-/* No IN_MODIFY: a reload must not read a half-written file, and IN_CLOSE_WRITE follows every write. */
+/* No IN_MODIFY, so a write in place reloads once, on IN_CLOSE_WRITE, not on every write call. */
 #define WATCH_MASK                                                                                   \
     (IN_ATTRIB | IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO | \
      IN_ONLYDIR)
@@ -83,8 +83,13 @@ static bool names(const struct inotify_event *e, const char *name)
 
 static bool handle_event(tif_watch *w, const struct inotify_event *e)
 {
-    if (e->mask & IN_Q_OVERFLOW)
+    if (e->mask & IN_Q_OVERFLOW) {
+        for (size_t i = 0; i < w->count; i++) {
+            w->targets[i].wd = -1;
+            w->targets[i].parent_wd = -1;
+        }
         return true;
+    }
 
     bool gone = (e->mask & (IN_IGNORED | IN_MOVE_SELF)) != 0;
     bool relevant = false;

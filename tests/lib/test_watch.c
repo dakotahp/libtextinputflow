@@ -147,6 +147,44 @@ static void check_folders_created_later(const char *root)
     free(distro_b);
 }
 
+static void check_folder_replaced(const char *root)
+{
+    char *user_dir = join(root, "replaced");
+    char *moved_dir = join(root, "replaced-away");
+    char *user = join(user_dir, "bindings");
+
+    write_file(user, "Right = move character forward\n");
+    tif_ctx *ctx = tif_new_for_paths(NULL, user);
+    if (!ctx)
+        abort();
+
+    CHECK(remove(user) == 0 && rmdir(user_dir) == 0);
+    CHECK(changes_after_event(ctx));
+    CHECK(tif_binding_count(ctx) == 0);
+
+    write_file(user, "Home = move line-start\n");
+    CHECK(changes_after_event(ctx));
+    CHECK(looks_up_to(ctx, key(KEY_HOME, 0), line_start));
+    write_file(user, "End = move line-end\n");
+    CHECK(changes_after_event(ctx));
+    CHECK(looks_up_to(ctx, key(KEY_END, 0), line_end));
+
+    CHECK(rename(user_dir, moved_dir) == 0);
+    CHECK(changes_after_event(ctx));
+    CHECK(tif_binding_count(ctx) == 0);
+    CHECK(rename(moved_dir, user_dir) == 0);
+    CHECK(changes_after_event(ctx));
+    CHECK(looks_up_to(ctx, key(KEY_END, 0), line_end));
+    write_file(user, "Right = move character forward\n");
+    CHECK(changes_after_event(ctx));
+    CHECK(looks_up_to(ctx, key(KEY_RIGHT, 0), char_fwd));
+
+    tif_free(ctx);
+    free(user_dir);
+    free(moved_dir);
+    free(user);
+}
+
 static void check_missing_config_parent(const char *root)
 {
     char *config = join(root, "no-such-config");
@@ -163,6 +201,7 @@ int main(void)
 
     check_explicit_paths(root);
     check_folders_created_later(root);
+    check_folder_replaced(root);
     check_missing_config_parent(root);
 
     remove_tree(root);
