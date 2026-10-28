@@ -42,7 +42,11 @@ def describe(row):
 
 def main():
     expected = load_expected(sys.argv[1])
-    actual = load_actual(sys.argv[2])
+    try:
+        actual = load_actual(sys.argv[2])
+    except FileNotFoundError:
+        print(f"FAIL: no results file at {sys.argv[2]}; the harness did not start")
+        sys.exit(1)
     mismatches = 0
     counts = {}
     for i in range(max(len(expected), len(actual))):
@@ -56,6 +60,8 @@ def main():
             print(f"MISMATCH {case} step {counts[case]}:")
             print(f"  expected {describe(want)}")
             print(f"  actual   {describe(got)}")
+    if len(actual) < len(expected):
+        print(f"results end after {len(actual)} of {len(expected)} rows; the harness may have timed out")
     if mismatches:
         print(f"FAIL: {mismatches} of {len(expected)} results differ")
         sys.exit(1)

@@ -27,7 +27,7 @@ The test starts a headless sway with a private D-Bus session, so it does not wor
 
 ### Needed packages
 
-On Arch: `meson`, `ninja`, `curl`, `glib2-devel`, `gtk4`, `qt6-base`, `sway`, `wtype`, `at-spi2-core`, `python-gobject`, `python-pyqt6`.
+On Arch: `meson`, `ninja`, `curl`, `patch`, `glib2-devel`, `gtk4`, `qt6-base`, `sway`, `wtype`, `at-spi2-core`, `python-gobject`, `python-pyqt6`. `adapters/gtk4/README.md` has more on the GTK build.
 
 ### Why GTK and Qt give different carets
 
