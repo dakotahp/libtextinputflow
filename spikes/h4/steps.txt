@@ -1,0 +1,9 @@
+start:
+Ctrl+Right:-M ctrl -k Right -m ctrl
+Home:-k Home
+Alt+Right:-M alt -k Right -m alt
+Home:-k Home
+reload:@USR1
+Ctrl+Right:-M ctrl -k Right -m ctrl
+Home:-k Home
+Alt+Right:-M alt -k Right -m alt

@@ -40,7 +40,7 @@ fi
 run_case() {
   local toolkit=$1 widget=$2 app_name=$3
   shift 3
-  if [ -n "${H6_ONLY:-}" ] && [ "$H6_ONLY" != "$toolkit-$widget" ]; then
+  if [ -n "${H6_ONLY:-}" ] && [[ "$toolkit-$widget" != "$H6_ONLY"* ]]; then
     return
   fi
   "$@" &
@@ -51,7 +51,10 @@ run_case() {
   fi
   for step in "${STEPS[@]}"; do
     local label=${step%%:*} keys=${step#*:}
-    if [ -n "$keys" ]; then
+    if [ "$keys" = "@USR1" ]; then
+      kill -USR1 "$pid"
+      sleep 0.4
+    elif [ -n "$keys" ]; then
       # shellcheck disable=SC2086
       wtype $keys
       sleep 0.4
@@ -66,7 +69,8 @@ run_case() {
   wait "$pid" 2>/dev/null
 }
 
-run_case gtk4 entry tif-gtk4 "$PY" "$DIR/gtk4_app.py" entry
-run_case gtk4 textview tif-gtk4 "$PY" "$DIR/gtk4_app.py" textview
+GTK_APP=${H6_GTK_APP:-$DIR/gtk4_app.py}
+run_case gtk4 entry tif-gtk4 "$PY" "$GTK_APP" entry
+run_case gtk4 textview tif-gtk4 "$PY" "$GTK_APP" textview
 run_case qt lineedit tif-qt "$PY" "$DIR/qt_app.py" entry
 run_case qt plaintextedit tif-qt "$PY" "$DIR/qt_app.py" textview
