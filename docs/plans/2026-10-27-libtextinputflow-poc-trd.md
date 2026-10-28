@@ -631,7 +631,7 @@ The e2e setup:
   | 10 | Alt+Right | 16 | 16 |
   | 11 | Home | 0 | 0 |
   | 12 | Ctrl+Right | 5 | 6 |
-  | 13 | reload: copy `user-v1` over the user file | 0 | 0 |
+  | 13 | reload: copy `user-v1` over the user file | 5 | 6 |
   | 14 | End, then Alt+BackSpace | text `alpha beta ` | text `alpha beta ` |
 
   Steps 2 and 12 differ between the toolkits by design (#15). Step 12 shows that removing the block brings back the distro binding.

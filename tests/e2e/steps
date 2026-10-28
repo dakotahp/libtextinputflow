@@ -1,0 +1,14 @@
+start:
+Alt+Right:-M alt -k Right -m alt
+Alt+Right:-M alt -k Right -m alt
+Alt+Left:-M alt -k Left -m alt
+Ctrl+Right:-M ctrl -k Right -m ctrl
+Home:-k Home
+Shift+Alt+Right:-M alt -M shift -k Right -m shift -m alt
+Home:-k Home
+reload user-v2:@sh cp "$E2E/user-v2" "$XDG_CONFIG_HOME/textinputflow/bindings"
+Alt+Right:-M alt -k Right -m alt
+Home:-k Home
+Ctrl+Right:-M ctrl -k Right -m ctrl
+reload user-v1:@sh cp "$E2E/user-v1" "$XDG_CONFIG_HOME/textinputflow/bindings"
+End, Alt+BackSpace:-k End -M alt -k BackSpace -m alt
