@@ -1,0 +1,5 @@
+Alt+Right       = move word forward
+Alt+Left        = move word backward
+Shift+Alt+Right = move word forward extend
+Alt+BackSpace   = delete word backward
+Control+Right   = none

@@ -1,0 +1,56 @@
+{"toolkit": "gtk4", "widget": "entry", "step": "start", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Alt+Right", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Alt+Right", "caret": 10, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Alt+Left", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Shift+Alt+Right", "caret": 5, "selection": [[0, 5]], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "reload user-v2", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Alt+Right", "caret": 16, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "Ctrl+Right", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "reload user-v1", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "entry", "step": "End, Alt+BackSpace", "caret": 11, "selection": [], "text": "alpha beta "}
+{"toolkit": "gtk4", "widget": "textview", "step": "start", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Alt+Right", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Alt+Right", "caret": 10, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Alt+Left", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Shift+Alt+Right", "caret": 5, "selection": [[0, 5]], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "reload user-v2", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Alt+Right", "caret": 16, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "Ctrl+Right", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "reload user-v1", "caret": 5, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "gtk4", "widget": "textview", "step": "End, Alt+BackSpace", "caret": 11, "selection": [], "text": "alpha beta "}
+{"toolkit": "qt", "widget": "lineedit", "step": "start", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Alt+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Alt+Right", "caret": 11, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Alt+Left", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Shift+Alt+Right", "caret": 6, "selection": [[0, 6]], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "reload user-v2", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Alt+Right", "caret": 16, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "reload user-v1", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "lineedit", "step": "End, Alt+BackSpace", "caret": 11, "selection": [], "text": "alpha beta "}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "start", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Alt+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Alt+Right", "caret": 11, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Alt+Left", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Shift+Alt+Right", "caret": 6, "selection": [[0, 6]], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "reload user-v2", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Alt+Right", "caret": 16, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Home", "caret": 0, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "Ctrl+Right", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "reload user-v1", "caret": 6, "selection": [], "text": "alpha beta gamma"}
+{"toolkit": "qt", "widget": "plaintextedit", "step": "End, Alt+BackSpace", "caret": 11, "selection": [], "text": "alpha beta "}
