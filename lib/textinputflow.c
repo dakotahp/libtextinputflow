@@ -1,58 +1,19 @@
+/* The library builds with hidden visibility; only the public header's functions are exported. */
+#pragma GCC visibility push(default)
 #include "textinputflow.h"
+#pragma GCC visibility pop
 
 #include <stdlib.h>
 #include <string.h>
 
-#define KEY_BACKSPACE 0xff08u
-#define KEY_HOME 0xff50u
-#define KEY_LEFT 0xff51u
-#define KEY_RIGHT 0xff53u
-#define KEY_END 0xff57u
-#define KEY_DELETE 0xffffu
-
-#define SHIFT TIF_MOD_SHIFT
-#define CTRL TIF_MOD_CONTROL
-#define ALT TIF_MOD_ALT
-
-#define BIND(sym, mods, action, unit, dir, extend) \
-    { {(sym), (mods)}, false, {TIF_ACTION_##action, TIF_UNIT_##unit, TIF_DIRECTION_##dir, (extend)} }
-#define BLOCK(sym, mods) \
-    { {(sym), (mods)}, true, {(tif_action)0, TIF_UNIT_NONE, TIF_DIRECTION_NONE, false} }
+#include "paths.h"
+#include "table.h"
 
 struct tif_ctx {
-    tif_binding *bindings;
-    size_t count;
+    tif_table table;
+    char *distro_path;
+    char *user_path;
 };
-
-static const tif_binding stub_table[] = {
-    BIND(KEY_LEFT, 0, MOVE, CHARACTER, BACKWARD, false),
-    BIND(KEY_RIGHT, 0, MOVE, CHARACTER, FORWARD, false),
-    BIND(KEY_LEFT, SHIFT, MOVE, CHARACTER, BACKWARD, true),
-    BIND(KEY_RIGHT, SHIFT, MOVE, CHARACTER, FORWARD, true),
-    BIND(KEY_LEFT, CTRL, MOVE, WORD, BACKWARD, false),
-    BLOCK(KEY_RIGHT, CTRL),
-    BIND(KEY_LEFT, SHIFT | CTRL, MOVE, WORD, BACKWARD, true),
-    BIND(KEY_RIGHT, SHIFT | CTRL, MOVE, WORD, FORWARD, true),
-    BIND(KEY_HOME, 0, MOVE, LINE_ENDS, BACKWARD, false),
-    BIND(KEY_END, 0, MOVE, LINE_ENDS, FORWARD, false),
-    BIND(KEY_HOME, SHIFT, MOVE, LINE_ENDS, BACKWARD, true),
-    BIND(KEY_END, SHIFT, MOVE, LINE_ENDS, FORWARD, true),
-    BIND(KEY_HOME, CTRL, MOVE, DOCUMENT_ENDS, BACKWARD, false),
-    BIND(KEY_END, CTRL, MOVE, DOCUMENT_ENDS, FORWARD, false),
-    BIND(KEY_HOME, SHIFT | CTRL, MOVE, DOCUMENT_ENDS, BACKWARD, true),
-    BIND(KEY_END, SHIFT | CTRL, MOVE, DOCUMENT_ENDS, FORWARD, true),
-    BIND(KEY_BACKSPACE, 0, DELETE, CHARACTER, BACKWARD, false),
-    BIND(KEY_DELETE, 0, DELETE, CHARACTER, FORWARD, false),
-    BIND(KEY_BACKSPACE, CTRL, DELETE, WORD, BACKWARD, false),
-    BIND(KEY_DELETE, CTRL, DELETE, WORD, FORWARD, false),
-    BIND('a', CTRL, SELECT_ALL, NONE, NONE, false),
-    BIND(KEY_LEFT, ALT, MOVE, WORD, BACKWARD, false),
-    BIND(KEY_RIGHT, ALT, MOVE, WORD, FORWARD, false),
-    BIND(KEY_RIGHT, SHIFT | ALT, MOVE, WORD, FORWARD, true),
-    BIND(KEY_BACKSPACE, ALT, DELETE, WORD, BACKWARD, false),
-};
-
-#define STUB_COUNT (sizeof stub_table / sizeof stub_table[0])
 
 static tif_key normalize(tif_key key)
 {
@@ -83,40 +44,101 @@ static bool same_command(const tif_command *a, const tif_command *b)
            a->extend == b->extend;
 }
 
-tif_ctx *tif_new(void)
+static bool copy_string(const char *s, char **out)
+{
+    *out = NULL;
+    if (!s)
+        return true;
+    size_t n = strlen(s) + 1;
+    *out = malloc(n);
+    if (!*out)
+        return false;
+    memcpy(*out, s, n);
+    return true;
+}
+
+static bool load(const tif_ctx *ctx, tif_table *out)
+{
+    tif_table user;
+
+    if (!tif_parse_file(ctx->distro_path, out))
+        return false;
+    if (!tif_parse_file(ctx->user_path, &user)) {
+        tif_table_free(out);
+        return false;
+    }
+
+    for (size_t i = 0; i < user.count; i++) {
+        tif_entry *existing = tif_table_find(out, user.entries[i].binding.key);
+        if (existing) {
+            *existing = user.entries[i];
+        } else if (!tif_table_append(out, &user.entries[i])) {
+            tif_table_free(&user);
+            tif_table_free(out);
+            return false;
+        }
+    }
+    tif_table_free(&user);
+    return true;
+}
+
+static tif_ctx *create(char *distro_path, char *user_path)
 {
     tif_ctx *ctx = calloc(1, sizeof *ctx);
-    if (!ctx)
-        return NULL;
-    ctx->bindings = malloc(sizeof stub_table);
-    if (!ctx->bindings) {
-        free(ctx);
+    if (!ctx) {
+        free(distro_path);
+        free(user_path);
         return NULL;
     }
-    memcpy(ctx->bindings, stub_table, sizeof stub_table);
-    ctx->count = STUB_COUNT;
+    ctx->distro_path = distro_path;
+    ctx->user_path = user_path;
+    if (!load(ctx, &ctx->table)) {
+        tif_free(ctx);
+        return NULL;
+    }
     return ctx;
+}
+
+tif_ctx *tif_new(void)
+{
+    return create(tif_distro_file_path(getenv("XDG_DATA_DIRS")),
+                  tif_user_file_path(getenv("XDG_CONFIG_HOME"), getenv("HOME")));
 }
 
 tif_ctx *tif_new_for_paths(const char *distro_file, const char *user_file)
 {
-    (void)distro_file;
-    (void)user_file;
-    return tif_new();
+    char *distro_path;
+    char *user_path;
+
+    if (!copy_string(distro_file, &distro_path))
+        return NULL;
+    if (!copy_string(user_file, &user_path)) {
+        free(distro_path);
+        return NULL;
+    }
+    return create(distro_path, user_path);
 }
 
 void tif_free(tif_ctx *ctx)
 {
     if (!ctx)
         return;
-    free(ctx->bindings);
+    tif_table_free(&ctx->table);
+    free(ctx->distro_path);
+    free(ctx->user_path);
     free(ctx);
 }
 
 bool tif_reload(tif_ctx *ctx)
 {
-    (void)ctx;
-    return false;
+    tif_table fresh;
+
+    if (!ctx || !load(ctx, &fresh))
+        return false;
+    bool changed = !tif_table_equal(&ctx->table, &fresh);
+    tif_table_free(&ctx->table);
+    ctx->table = fresh;
+    return changed;
 }
 
 int tif_fd(const tif_ctx *ctx)
@@ -136,30 +158,26 @@ tif_lookup_result tif_lookup(const tif_ctx *ctx, tif_key key, tif_command *out)
     if (!ctx)
         return TIF_LOOKUP_UNBOUND;
 
-    key = normalize(key);
-    for (size_t i = 0; i < ctx->count; i++) {
-        const tif_binding *b = &ctx->bindings[i];
-        if (b->key.keysym != key.keysym || b->key.mods != key.mods)
-            continue;
-        if (b->blocked)
-            return TIF_LOOKUP_BLOCKED;
-        if (out)
-            *out = b->command;
-        return TIF_LOOKUP_COMMAND;
-    }
-    return TIF_LOOKUP_UNBOUND;
+    const tif_entry *e = tif_table_find(&ctx->table, normalize(key));
+    if (!e)
+        return TIF_LOOKUP_UNBOUND;
+    if (e->binding.blocked)
+        return TIF_LOOKUP_BLOCKED;
+    if (out)
+        *out = e->binding.command;
+    return TIF_LOOKUP_COMMAND;
 }
 
 size_t tif_binding_count(const tif_ctx *ctx)
 {
-    return ctx ? ctx->count : 0;
+    return ctx ? ctx->table.count : 0;
 }
 
 bool tif_binding_at(const tif_ctx *ctx, size_t index, tif_binding *out)
 {
-    if (!ctx || !out || index >= ctx->count)
+    if (!ctx || !out || index >= ctx->table.count)
         return false;
-    *out = ctx->bindings[index];
+    *out = ctx->table.entries[index].binding;
     return true;
 }
 
@@ -169,8 +187,8 @@ size_t tif_keys_for_command(const tif_ctx *ctx, const tif_command *command, tif_
         return 0;
 
     size_t total = 0;
-    for (size_t i = 0; i < ctx->count; i++) {
-        const tif_binding *b = &ctx->bindings[i];
+    for (size_t i = 0; i < ctx->table.count; i++) {
+        const tif_binding *b = &ctx->table.entries[i].binding;
         if (b->blocked || !same_command(&b->command, command))
             continue;
         if (total < max)
