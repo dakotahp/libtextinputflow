@@ -12,6 +12,6 @@ inc = include_directories('include')
 subdir('lib')
 
 if get_option('tests')
-  add_languages('cpp', native: false, required: true)
+  have_cpp = add_languages('cpp', native: false, required: false)
   subdir('tests/lib')
 endif

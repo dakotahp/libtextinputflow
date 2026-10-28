@@ -13,6 +13,8 @@ int main(void)
     CHECK(tif_fd(NULL) == -1);
     CHECK(!tif_refresh(NULL));
     CHECK(tif_lookup(NULL, key, &cmd) == TIF_LOOKUP_UNBOUND);
+    CHECK(cmd.action == TIF_ACTION_MOVE && cmd.unit == TIF_UNIT_WORD && cmd.direction == TIF_DIRECTION_FORWARD &&
+          !cmd.extend);
     CHECK(tif_binding_count(NULL) == 0);
     CHECK(!tif_binding_at(NULL, 0, &binding));
     CHECK(tif_keys_for_command(NULL, &cmd, keys, 2) == 0);
