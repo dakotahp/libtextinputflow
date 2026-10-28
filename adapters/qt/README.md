@@ -1,6 +1,6 @@
 # Qt platform theme plugin
 
-This plugin makes Qt text fields follow the textinputflow bindings files. It is a Qt platform theme named `textinputflow`. It wraps your normal Qt theme and changes only the text-editing key bindings.
+This plugin makes Qt text fields follow the textinputflow bindings files. It is a Qt platform theme named `textinputflow`. It wraps another Qt theme, `gtk3` by default, and changes only the key bindings.
 
 ## Build
 
@@ -22,14 +22,14 @@ export QT_PLUGIN_PATH=$PWD/build/adapters/qt
 export QT_QPA_PLATFORMTHEME=textinputflow
 ```
 
-The plugin wraps the theme named in `TEXTINPUTFLOW_QT_BASE_THEME`. If that variable is unset or empty, it wraps `gtk3`. If the plugin cannot create that theme, it uses Qt's plain theme. Text keys follow the bindings files in all three cases.
+The plugin wraps the theme named in `TEXTINPUTFLOW_QT_BASE_THEME`. If that variable is unset or empty, it wraps `gtk3`. If the plugin cannot create that theme, it prints a warning and uses Qt's plain theme. Text keys follow the bindings files in all three cases.
 
 ## What it changes
 
-For each Qt standard key, such as `MoveToNextWord`, the plugin starts from the base theme's keys. It removes every key that the bindings files bind or block, then adds the keys bound to the matching command. So:
+For each Qt standard key, such as `MoveToNextWord`, the plugin starts from the base theme's keys. It removes every key that the bindings files bind or block, then adds the keys bound to the matching command. This applies to all standard keys, not only text ones. For example, the default bindings file binds BackSpace, so `QKeySequence::Back` loses BackSpace in every app. So:
 
-- A key bound to a command runs that command in text fields. It also beats an app shortcut on the same key.
-- A key bound to `none` does nothing in text fields. An app shortcut on that key still runs.
+- A key bound to a command runs that command in text fields. For some commands it also beats an app shortcut on the same key. See "Known limit: app shortcuts".
+- A key bound to `none` does nothing in text fields. An app's own shortcut on that key still runs. A shortcut the app builds from a Qt standard key loses the key.
 - A key the files do not name keeps Qt's own meaning.
 
 The plugin checks for file changes each time Qt asks it for key bindings, which Qt does on every key press.
@@ -37,6 +37,10 @@ The plugin checks for file changes each time Qt asks it for key bindings, which 
 ## Known limit: Backspace
 
 `QLineEdit` and Qt Quick `TextInput` handle Backspace and Ctrl+Backspace in their own code, after they check the theme's keys. So a bindings file cannot block these two keys in those widgets.
+
+## Known limit: app shortcuts
+
+A text field beats an app shortcut only for the standard keys that the widget claims in its `ShortcutOverride` handling. Word moves pass in both `QLineEdit` and `QPlainTextEdit`. Delete word backward (Alt+BackSpace in the stub table) does not: the app shortcut runs, in both widgets. Select to document end (Shift+Ctrl+End) passes in `QPlainTextEdit` but not in `QLineEdit`.
 
 ## Checks
 

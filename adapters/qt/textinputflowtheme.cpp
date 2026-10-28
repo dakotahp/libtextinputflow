@@ -164,6 +164,7 @@ static QPlatformTheme *createBaseTheme(const QString &name)
         if (QPlatformTheme *theme = QGuiApplicationPrivate::platform_integration->createPlatformTheme(name))
             return theme;
     }
+    qWarning("textinputflow: cannot create the Qt theme \"%s\", using Qt's plain theme", qUtf8Printable(name));
     return new QPlatformTheme;
 }
 
