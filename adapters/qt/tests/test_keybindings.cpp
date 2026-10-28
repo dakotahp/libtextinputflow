@@ -45,14 +45,8 @@ int main(int argc, char **argv)
                {QKeySequence(Qt::CTRL | Qt::Key_Backspace), QKeySequence(Qt::ALT | Qt::Key_Backspace)});
     expectKeys("SelectAll", QKeySequence::SelectAll, {QKeySequence(Qt::CTRL | Qt::Key_A)});
     expectKeys("Copy", QKeySequence::Copy, plain.keyBindings(QKeySequence::Copy));
-
-    const QKeySequence blocked(Qt::CTRL | Qt::Key_Right);
-    for (int key = QKeySequence::UnknownKey + 1; key <= QKeySequence::Cancel; ++key) {
-        if (QKeySequence::keyBindings(QKeySequence::StandardKey(key)).contains(blocked)) {
-            QTextStream(stderr) << "blocked Ctrl+Right is still in StandardKey " << key << "\n";
-            ++failures;
-        }
-    }
+    expectKeys("Back", QKeySequence::Back, plain.keyBindings(QKeySequence::Back));
+    expectKeys("Forward", QKeySequence::Forward, plain.keyBindings(QKeySequence::Forward));
 
     return failures == 0 ? 0 : 1;
 }

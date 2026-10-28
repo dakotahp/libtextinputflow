@@ -26,10 +26,10 @@ The plugin wraps the theme named in `TEXTINPUTFLOW_QT_BASE_THEME`. If that varia
 
 ## What it changes
 
-For each Qt standard key, such as `MoveToNextWord`, the plugin starts from the base theme's keys. It removes every key that the bindings files bind or block, then adds the keys bound to the matching command. This applies to all standard keys, not only text ones. For example, the default bindings file binds BackSpace, so `QKeySequence::Back` loses BackSpace in every app. So:
+The plugin changes only the 21 text-editing standard keys, such as `MoveToNextWord` and `DeleteStartOfWord`. For each of them, it starts from the base theme's keys. It removes every key that the bindings files bind or block, then adds the keys bound to the matching command. All other standard keys, such as `Copy`, `Back` and `Forward`, keep the base theme's keys. So:
 
 - A key bound to a command runs that command in text fields. For some commands it also beats an app shortcut on the same key. See "Known limit: app shortcuts".
-- A key bound to `none` does nothing in text fields. An app's own shortcut on that key still runs. A shortcut the app builds from a Qt standard key loses the key.
+- A key bound to `none` does nothing in text fields. An app shortcut on that key still runs.
 - A key the files do not name keeps Qt's own meaning.
 
 The plugin checks for file changes each time Qt asks it for key bindings, which Qt does on every key press.

@@ -95,6 +95,10 @@ public:
     {
         tif_refresh(m_ctx);
 
+        const tif_command *command = commandFor(key);
+        if (!command)
+            return m_base->keyBindings(key);
+
         QList<QKeyCombination> libraryKeys;
         tif_binding binding;
         for (size_t i = 0; tif_binding_at(m_ctx, i, &binding); ++i) {
@@ -108,14 +112,12 @@ public:
                 result.append(sequence);
         }
 
-        if (const tif_command *command = commandFor(key)) {
-            std::vector<tif_key> keys(tif_keys_for_command(m_ctx, command, nullptr, 0));
-            tif_keys_for_command(m_ctx, command, keys.data(), keys.size());
-            for (const tif_key &libraryKey : keys) {
-                const std::optional<QKeyCombination> combination = toCombination(libraryKey);
-                if (combination && !result.contains(QKeySequence(*combination)))
-                    result.append(QKeySequence(*combination));
-            }
+        std::vector<tif_key> keys(tif_keys_for_command(m_ctx, command, nullptr, 0));
+        tif_keys_for_command(m_ctx, command, keys.data(), keys.size());
+        for (const tif_key &libraryKey : keys) {
+            const std::optional<QKeyCombination> combination = toCombination(libraryKey);
+            if (combination && !result.contains(QKeySequence(*combination)))
+                result.append(QKeySequence(*combination));
         }
         return result;
     }
