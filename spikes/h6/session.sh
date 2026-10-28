@@ -52,7 +52,7 @@ run_case() {
   if [ -n "${H6_DUMP:-}" ]; then
     sleep 3
     "$PY" "$DIR/probe.py" "$app_name" --dump >&2
-    grep -m1 -oE '/[^ ]*lib(gtk-4|Qt6Gui)\.so[^ ]*' "/proc/$pid/maps" >&2
+    grep -oE '/[^ ]*lib(gtk-4|Qt6Gui|textinputflow)\.so[^ ]*' "/proc/$pid/maps" | sort -u >&2
   fi
   for step in "${STEPS[@]}"; do
     local label=${step%%:*} keys=${step#*:}
