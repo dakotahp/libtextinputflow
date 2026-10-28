@@ -59,6 +59,9 @@ run_case() {
     if [ "$keys" = "@USR1" ]; then
       kill -USR1 "$pid"
       sleep 0.4
+    elif [[ $keys == "@sh "* ]]; then
+      bash -c "${keys#@sh }" >&2
+      sleep 1
     elif [ -n "$keys" ]; then
       # shellcheck disable=SC2086
       wtype $keys

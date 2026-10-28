@@ -58,6 +58,7 @@ def read(app_name):
         "role": field.get_role_name(),
         "caret": text.get_caret_offset(),
         "selection": selections,
+        "text": Atspi.Text.get_text(text, 0, -1),
     }
 
 
