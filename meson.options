@@ -1,1 +1,2 @@
+option('qt', type: 'feature', value: 'auto', description: 'Build the Qt platform theme plugin')
 option('tests', type: 'boolean', value: true, description: 'Build the unit tests')
