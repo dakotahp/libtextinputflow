@@ -16,6 +16,7 @@ Debug switches:
 
 - `H6_ONLY=gtk4-entry` runs the cases whose name starts with this value (`gtk4-entry`, `gtk4-textview`, `qt-lineedit`, `qt-plaintextedit`). `H6_ONLY=gtk4` runs both GTK cases.
 - `H6_GTK_APP=app.py` replaces the GTK test app. It must take `entry` or `textview` as its argument.
+- `H6_QT_APP=app.py` replaces the Qt test app. It must take `entry` or `textview` as its argument, and name itself `tif-qt`.
 - `H6_LD_LIBRARY_PATH=dir` sets `LD_LIBRARY_PATH` for the apps, for example to load a locally built GTK. A plain `LD_LIBRARY_PATH` does not work: see "What it took".
 - `H6_DUMP=1` also logs which `libgtk-4` or `libQt6Gui` each app loaded.
 - A step whose value is `@USR1`, for example `reload:@USR1`, sends `SIGUSR1` to the app instead of keys.
