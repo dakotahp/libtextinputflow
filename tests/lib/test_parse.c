@@ -260,6 +260,18 @@ static void check_empty_and_missing(void)
     free(err);
     free(missing);
 
+    char *fifo = join(dir, "fifo");
+    CHECK(mkfifo(fifo, 0600) == 0);
+    cap = capture_begin();
+    ctx = tif_new_for_paths(NULL, fifo);
+    err = capture_end(cap);
+    CHECK(ctx != NULL);
+    CHECK(tif_binding_count(ctx) == 0);
+    CHECK(strcmp(err, "") == 0);
+    tif_free(ctx);
+    free(err);
+    free(fifo);
+
     cap = capture_begin();
     ctx = tif_new_for_paths(dir, NULL);
     err = capture_end(cap);

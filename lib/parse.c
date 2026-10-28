@@ -1,10 +1,15 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "table.h"
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define MAX_LINE 1024
 #define MAX_WORDS 5
@@ -275,9 +280,19 @@ static line_kind parse_line(const char *line, size_t len, tif_binding *out, char
 
 static read_status read_file(const char *path, char **data, size_t *size)
 {
-    FILE *f = fopen(path, "rb");
-    if (!f)
+    struct stat st;
+    int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0)
         return READ_NONE;
+    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) {
+        close(fd);
+        return READ_NONE;
+    }
+    FILE *f = fdopen(fd, "rb");
+    if (!f) {
+        close(fd);
+        return READ_NONE;
+    }
 
     char *buf = NULL;
     size_t len = 0;

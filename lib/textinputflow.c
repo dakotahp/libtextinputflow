@@ -11,6 +11,7 @@
 
 struct tif_ctx {
     tif_table table;
+    char *data_dirs;
     char *distro_path;
     char *user_path;
 };
@@ -57,10 +58,17 @@ static bool copy_string(const char *s, char **out)
     return true;
 }
 
-static bool load(const tif_ctx *ctx, tif_table *out)
+static bool load(tif_ctx *ctx, tif_table *out)
 {
     tif_table user;
 
+    if (ctx->data_dirs) {
+        char *found;
+        if (!tif_distro_file_path(ctx->data_dirs, &found))
+            return false;
+        free(ctx->distro_path);
+        ctx->distro_path = found;
+    }
     if (!tif_parse_file(ctx->distro_path, out))
         return false;
     if (!tif_parse_file(ctx->user_path, &user)) {
@@ -82,17 +90,9 @@ static bool load(const tif_ctx *ctx, tif_table *out)
     return true;
 }
 
-static tif_ctx *create(char *distro_path, char *user_path)
+static tif_ctx *finish(tif_ctx *ctx, bool paths_ok)
 {
-    tif_ctx *ctx = calloc(1, sizeof *ctx);
-    if (!ctx) {
-        free(distro_path);
-        free(user_path);
-        return NULL;
-    }
-    ctx->distro_path = distro_path;
-    ctx->user_path = user_path;
-    if (!load(ctx, &ctx->table)) {
+    if (!paths_ok || !load(ctx, &ctx->table)) {
         tif_free(ctx);
         return NULL;
     }
@@ -101,22 +101,21 @@ static tif_ctx *create(char *distro_path, char *user_path)
 
 tif_ctx *tif_new(void)
 {
-    return create(tif_distro_file_path(getenv("XDG_DATA_DIRS")),
-                  tif_user_file_path(getenv("XDG_CONFIG_HOME"), getenv("HOME")));
+    tif_ctx *ctx = calloc(1, sizeof *ctx);
+    if (!ctx)
+        return NULL;
+    bool ok = copy_string(tif_data_dirs(getenv("XDG_DATA_DIRS")), &ctx->data_dirs) &&
+              tif_user_file_path(getenv("XDG_CONFIG_HOME"), getenv("HOME"), &ctx->user_path);
+    return finish(ctx, ok);
 }
 
 tif_ctx *tif_new_for_paths(const char *distro_file, const char *user_file)
 {
-    char *distro_path;
-    char *user_path;
-
-    if (!copy_string(distro_file, &distro_path))
+    tif_ctx *ctx = calloc(1, sizeof *ctx);
+    if (!ctx)
         return NULL;
-    if (!copy_string(user_file, &user_path)) {
-        free(distro_path);
-        return NULL;
-    }
-    return create(distro_path, user_path);
+    bool ok = copy_string(distro_file, &ctx->distro_path) && copy_string(user_file, &ctx->user_path);
+    return finish(ctx, ok);
 }
 
 void tif_free(tif_ctx *ctx)
@@ -124,6 +123,7 @@ void tif_free(tif_ctx *ctx)
     if (!ctx)
         return;
     tif_table_free(&ctx->table);
+    free(ctx->data_dirs);
     free(ctx->distro_path);
     free(ctx->user_path);
     free(ctx);
