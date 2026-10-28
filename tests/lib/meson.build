@@ -1,6 +1,6 @@
 test_c_args = ['-D_XOPEN_SOURCE=700']
 
-foreach name : ['test_null', 'test_header_c99', 'test_parse', 'test_merge']
+foreach name : ['test_null', 'test_header_c99', 'test_parse', 'test_merge', 'test_watch']
   test(
     name,
     executable(name, name + '.c', c_args: test_c_args, dependencies: textinputflow_dep),

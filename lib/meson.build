@@ -4,6 +4,7 @@ libtextinputflow = library(
   'parse.c',
   'paths.c',
   'table.c',
+  'watch.c',
   include_directories: inc,
   gnu_symbol_visibility: 'hidden',
   version: meson.project_version(),

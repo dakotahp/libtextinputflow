@@ -24,26 +24,29 @@ const char *tif_data_dirs(const char *xdg_data_dirs)
     return xdg_data_dirs && *xdg_data_dirs ? xdg_data_dirs : "/usr/local/share:/usr/share";
 }
 
-bool tif_distro_file_path(const char *data_dirs, char **out)
+bool tif_next_distro_path(const char **cursor, char **out)
 {
-    const char *dir = data_dirs;
     *out = NULL;
-    for (;;) {
+    while (*cursor) {
+        const char *dir = *cursor;
         const char *end = strchr(dir, ':');
         size_t len = end ? (size_t)(end - dir) : strlen(dir);
-        if (len > 0 && dir[0] == '/') {
-            char *path;
-            if (!concat(dir, len, BINDINGS_SUFFIX, &path))
-                return false;
-            if (access(path, F_OK) == 0) {
-                *out = path;
-                return true;
-            }
-            free(path);
-        }
-        if (!end)
+        *cursor = end ? end + 1 : NULL;
+        if (len > 0 && dir[0] == '/')
+            return concat(dir, len, BINDINGS_SUFFIX, out);
+    }
+    return true;
+}
+
+bool tif_distro_file_path(const char *data_dirs, char **out)
+{
+    const char *cursor = data_dirs;
+    for (;;) {
+        if (!tif_next_distro_path(&cursor, out))
+            return false;
+        if (!*out || access(*out, F_OK) == 0)
             return true;
-        dir = end + 1;
+        free(*out);
     }
 }
 

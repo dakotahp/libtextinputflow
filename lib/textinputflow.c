@@ -8,12 +8,14 @@
 
 #include "paths.h"
 #include "table.h"
+#include "watch.h"
 
 struct tif_ctx {
     tif_table table;
     char *data_dirs;
     char *distro_path;
     char *user_path;
+    tif_watch watch;
 };
 
 static tif_key normalize(tif_key key)
@@ -90,9 +92,33 @@ static bool load(tif_ctx *ctx, tif_table *out)
     return true;
 }
 
-static tif_ctx *finish(tif_ctx *ctx, bool paths_ok)
+static tif_ctx *new_ctx(void)
 {
-    if (!paths_ok || !load(ctx, &ctx->table)) {
+    tif_ctx *ctx = calloc(1, sizeof *ctx);
+    if (ctx)
+        tif_watch_init(&ctx->watch);
+    return ctx;
+}
+
+static bool watch_distro_paths(tif_ctx *ctx)
+{
+    const char *cursor = ctx->data_dirs;
+    for (;;) {
+        char *path;
+        if (!tif_next_distro_path(&cursor, &path))
+            return false;
+        if (!path)
+            return true;
+        bool ok = tif_watch_add_file(&ctx->watch, path);
+        free(path);
+        if (!ok)
+            return false;
+    }
+}
+
+static tif_ctx *finish(tif_ctx *ctx, bool setup_ok)
+{
+    if (!setup_ok || !load(ctx, &ctx->table)) {
         tif_free(ctx);
         return NULL;
     }
@@ -101,20 +127,22 @@ static tif_ctx *finish(tif_ctx *ctx, bool paths_ok)
 
 tif_ctx *tif_new(void)
 {
-    tif_ctx *ctx = calloc(1, sizeof *ctx);
+    tif_ctx *ctx = new_ctx();
     if (!ctx)
         return NULL;
     bool ok = copy_string(tif_data_dirs(getenv("XDG_DATA_DIRS")), &ctx->data_dirs) &&
-              tif_user_file_path(getenv("XDG_CONFIG_HOME"), getenv("HOME"), &ctx->user_path);
+              tif_user_file_path(getenv("XDG_CONFIG_HOME"), getenv("HOME"), &ctx->user_path) &&
+              watch_distro_paths(ctx) && tif_watch_add_file(&ctx->watch, ctx->user_path);
     return finish(ctx, ok);
 }
 
 tif_ctx *tif_new_for_paths(const char *distro_file, const char *user_file)
 {
-    tif_ctx *ctx = calloc(1, sizeof *ctx);
+    tif_ctx *ctx = new_ctx();
     if (!ctx)
         return NULL;
-    bool ok = copy_string(distro_file, &ctx->distro_path) && copy_string(user_file, &ctx->user_path);
+    bool ok = copy_string(distro_file, &ctx->distro_path) && copy_string(user_file, &ctx->user_path) &&
+              tif_watch_add_file(&ctx->watch, distro_file) && tif_watch_add_file(&ctx->watch, user_file);
     return finish(ctx, ok);
 }
 
@@ -123,6 +151,7 @@ void tif_free(tif_ctx *ctx)
     if (!ctx)
         return;
     tif_table_free(&ctx->table);
+    tif_watch_free(&ctx->watch);
     free(ctx->data_dirs);
     free(ctx->distro_path);
     free(ctx->user_path);
@@ -143,14 +172,12 @@ bool tif_reload(tif_ctx *ctx)
 
 int tif_fd(const tif_ctx *ctx)
 {
-    (void)ctx;
-    return -1;
+    return ctx ? ctx->watch.fd : -1;
 }
 
 bool tif_refresh(tif_ctx *ctx)
 {
-    (void)ctx;
-    return false;
+    return ctx && tif_watch_drain(&ctx->watch) && tif_reload(ctx);
 }
 
 tif_lookup_result tif_lookup(const tif_ctx *ctx, tif_key key, tif_command *out)
