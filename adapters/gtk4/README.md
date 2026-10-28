@@ -62,9 +62,21 @@ The patch adds its controller just before the line that creates the widget's inp
 
 No automated test covers input method order, because the headless test session has no input method. Check it by hand with a real input method.
 
-### Known limit: app shortcuts
+### App shortcuts
 
-An app shortcut on the same key still runs before the text field, as in stock GTK. Ticket #20 changes this.
+In stock GTK, an app shortcut runs before the focused text field sees the key. The app's shortcuts sit in a window controller, `gtk-application-shortcuts`, which runs in the capture phase, before any widget controller.
+
+The patch adds one more controller to each window that has an application, named `gtk-textinputflow-window`. `gtk_window_set_application()` adds it just after the app shortcut controller. GTK runs later-added controllers first, so ours runs before the app's.
+
+It takes a key only when all of these are true:
+
+1. The window's focus widget is a `GtkText` or a `GtkTextView`.
+2. That widget shows no preedit text. While an input method composes text, it must get every key first.
+3. The bindings files bind the key to a command.
+
+Then it runs the command on the focus widget, with the same action as the widget's own controller, and the app shortcut does not run. A key bound to `none`, or not named in the bindings files, goes on to the app shortcut, as in stock GTK.
+
+No automated test covers input method composition with this controller, because the headless test session has no input method. Check it by hand with a real input method.
 
 ## Checks
 
@@ -73,5 +85,6 @@ An app shortcut on the same key still runs before the text field, as in stock GT
 - Enabled build: the caret results must match `tests/keys.expected`. Alt+Right moves a word, and the blocked Ctrl+Right does nothing, so the library is in control.
 - Disabled build: Ctrl+Right must move 0 → 5, as in stock GTK (`tests/stock.expected`).
 - Both: the apps must load the GTK that was just built. With the enabled build they must also load this repo's `libtextinputflow.so.0`, and with the disabled build they must not.
+- App shortcuts: `tests/gtk4_accel_app.py` binds an app action to Alt+Right and Ctrl+Right. The action moves the caret to the end (16). With the enabled build, Alt+Right moves a word (caret 5), because the text binding wins, and the blocked Ctrl+Right runs the app action (caret 16). With the disabled build, Alt+Right runs the app action (caret 16), as in stock GTK. The results must match `tests/accel.expected` and `tests/accel-stock.expected`.
 
 The check starts a headless sway with a private D-Bus session, so it does not work inside a sandbox. Read `tests/harness/README.md` first.
