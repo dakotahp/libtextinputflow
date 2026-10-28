@@ -1,16 +1,16 @@
-lineedit start 0 -
-lineedit Alt+Right 6 -
-lineedit Home 0 -
-lineedit Ctrl+Right 0 -
-lineedit Home 0 -
-lineedit Shift+Alt+Right 6 0-6
-lineedit Home 0 -
-lineedit End 16 -
-plaintextedit start 0 -
-plaintextedit Alt+Right 6 -
-plaintextedit Home 0 -
-plaintextedit Ctrl+Right 0 -
-plaintextedit Home 0 -
-plaintextedit Shift+Alt+Right 6 0-6
-plaintextedit Home 0 -
-plaintextedit End 16 -
+lineedit start 0 - "alpha beta gamma"
+lineedit Alt+Right 6 - "alpha beta gamma"
+lineedit Home 0 - "alpha beta gamma"
+lineedit Ctrl+Right 0 - "alpha beta gamma"
+lineedit Home 0 - "alpha beta gamma"
+lineedit Shift+Alt+Right 6 0-6 "alpha beta gamma"
+lineedit Home 0 - "alpha beta gamma"
+lineedit End 16 - "alpha beta gamma"
+plaintextedit start 0 - "alpha beta gamma"
+plaintextedit Alt+Right 6 - "alpha beta gamma"
+plaintextedit Home 0 - "alpha beta gamma"
+plaintextedit Ctrl+Right 0 - "alpha beta gamma"
+plaintextedit Home 0 - "alpha beta gamma"
+plaintextedit Shift+Alt+Right 6 0-6 "alpha beta gamma"
+plaintextedit Home 0 - "alpha beta gamma"
+plaintextedit End 16 - "alpha beta gamma"

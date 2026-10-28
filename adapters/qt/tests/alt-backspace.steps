@@ -1,0 +1,3 @@
+start:
+End:-k End
+Alt+BackSpace:-M alt -k BackSpace -m alt

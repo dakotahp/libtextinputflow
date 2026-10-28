@@ -5,7 +5,10 @@
 #include <QtGui/qpa/qplatformtheme.h>
 #include <QtGui/qpa/qplatformthemefactory_p.h>
 #include <QtGui/qpa/qplatformthemeplugin.h>
+#include <QGuiApplication>
+#include <QKeyEvent>
 #include <QKeySequence>
+#include <QVariant>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -85,14 +88,98 @@ static std::optional<QKeyCombination> toCombination(tif_key key)
     return std::nullopt;
 }
 
+static std::optional<tif_key> toTifKey(const QKeyEvent *event)
+{
+    const Qt::KeyboardModifiers modifiers = event->modifiers();
+    uint32_t mods = 0;
+    if (modifiers & Qt::ShiftModifier)
+        mods |= TIF_MOD_SHIFT;
+    if (modifiers & Qt::ControlModifier)
+        mods |= TIF_MOD_CONTROL;
+    if (modifiers & Qt::AltModifier)
+        mods |= TIF_MOD_ALT;
+    if (modifiers & Qt::MetaModifier)
+        mods |= TIF_MOD_SUPER;
+
+    const int key = event->key();
+    if (key >= Qt::Key_A && key <= Qt::Key_Z)
+        return tif_key{uint32_t('a' + (key - Qt::Key_A)), mods};
+    for (const NamedKey &named : namedKeys) {
+        if (named.key == key)
+            return tif_key{named.keysym, mods};
+    }
+    return std::nullopt;
+}
+
+static const char *const textWidgetClasses[] = {
+    "QLineEdit", "QTextEdit", "QPlainTextEdit", "QQuickTextInput", "QQuickTextEdit",
+};
+
+static bool isTextWidget(const QObject *object)
+{
+    for (const char *className : textWidgetClasses) {
+        if (object->inherits(className))
+            return true;
+    }
+    return false;
+}
+
+static bool canRun(const QObject *textWidget, const tif_command &command)
+{
+    const bool editable = !textWidget->property("readOnly").toBool();
+    if (command.action == TIF_ACTION_DELETE)
+        return editable;
+
+    const QVariant flags = textWidget->property("textInteractionFlags");
+    if (flags.isValid())
+        return flags.value<Qt::TextInteractionFlags>() & (Qt::TextSelectableByKeyboard | Qt::TextEditable);
+    const QVariant selectByKeyboard = textWidget->property("selectByKeyboard");
+    if (selectByKeyboard.isValid())
+        return editable || selectByKeyboard.toBool();
+    return true;
+}
+
+class ShortcutOverrideFilter : public QObject
+{
+public:
+    explicit ShortcutOverrideFilter(tif_ctx *ctx) : m_ctx(ctx) {}
+
+    bool eventFilter(QObject *receiver, QEvent *event) override
+    {
+        if (event->type() != QEvent::ShortcutOverride || receiver != QGuiApplication::focusObject() ||
+            !isTextWidget(receiver))
+            return false;
+
+        const std::optional<tif_key> key = toTifKey(static_cast<QKeyEvent *>(event));
+        if (!key)
+            return false;
+        tif_refresh(m_ctx);
+        tif_command command;
+        if (tif_lookup(m_ctx, *key, &command) != TIF_LOOKUP_COMMAND || !canRun(receiver, command))
+            return false;
+        // The Qt Quick text items ignore a ShortcutOverride they do not claim themselves, so the
+        // receiver must not see the event after it is accepted here.
+        event->accept();
+        return true;
+    }
+
+private:
+    tif_ctx *m_ctx;
+};
+
 class TextInputFlowTheme : public QPlatformTheme
 {
 public:
-    explicit TextInputFlowTheme(QPlatformTheme *base) : m_base(base), m_ctx(tif_new()) {}
-    ~TextInputFlowTheme() override { tif_free(m_ctx); }
+    explicit TextInputFlowTheme(QPlatformTheme *base) : m_base(base), m_ctx(tif_new()) { installShortcutFilter(); }
+    ~TextInputFlowTheme() override
+    {
+        m_filter.reset();
+        tif_free(m_ctx);
+    }
 
     QList<QKeySequence> keyBindings(QKeySequence::StandardKey key) const override
     {
+        installShortcutFilter();
         tif_refresh(m_ctx);
 
         const tif_command *command = commandFor(key);
@@ -154,8 +241,19 @@ public:
     Qt::MotionPreference motionPreference() const override { return m_base->motionPreference(); }
 
 private:
+    // Qt sends the first ShortcutOverride before it asks for any key bindings, so waiting for
+    // keyBindings() would let the first key press reach app shortcuts.
+    void installShortcutFilter() const
+    {
+        if (m_filter || !QCoreApplication::instance())
+            return;
+        m_filter = std::make_unique<ShortcutOverrideFilter>(m_ctx);
+        QCoreApplication::instance()->installEventFilter(m_filter.get());
+    }
+
     std::unique_ptr<QPlatformTheme> m_base;
     tif_ctx *m_ctx;
+    mutable std::unique_ptr<ShortcutOverrideFilter> m_filter;
 };
 
 static QPlatformTheme *createBaseTheme(const QString &name)

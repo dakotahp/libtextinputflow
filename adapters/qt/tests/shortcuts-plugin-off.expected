@@ -1,0 +1,6 @@
+lineedit start 0 - "alpha beta gamma"
+lineedit End 16 - "alpha beta gamma"
+lineedit Alt+BackSpace 3 - "alpha beta gamma"
+plaintextedit start 0 - "alpha beta gamma"
+plaintextedit End 16 - "alpha beta gamma"
+plaintextedit Alt+BackSpace 3 - "alpha beta gamma"

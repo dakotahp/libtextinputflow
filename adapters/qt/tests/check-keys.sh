@@ -22,7 +22,7 @@ for line in open(sys.argv[1]):
         print(row["widget"], row["step"], "error:", result["error"])
         continue
     selection = ",".join(f"{start}-{end}" for start, end in result["selection"]) or "-"
-    print(row["widget"], row["step"], result["caret"], selection)
+    print(row["widget"], row["step"], result["caret"], selection, json.dumps(result["text"]))
 ' "$1"
 }
 
@@ -45,4 +45,10 @@ check() {
 check keys "$DIR/keys.expected" H6_STEPS="$DIR/keys.steps"
 check keys-nonexistent-base "$DIR/keys.expected" H6_STEPS="$DIR/keys.steps" TEXTINPUTFLOW_QT_BASE_THEME=nonexistent
 check shortcuts "$DIR/shortcuts.expected" H6_STEPS="$DIR/shortcuts.steps" H6_QT_APP="$DIR/qt_shortcut_app.py"
+check shortcuts-document-end "$DIR/shortcuts-document-end.expected" H6_STEPS="$DIR/document-end.steps" \
+  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_ONLY=qt-plaintextedit
+check shortcuts-read-only "$DIR/shortcuts-read-only.expected" H6_STEPS="$DIR/alt-backspace.steps" \
+  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_ONLY=qt-lineedit TIF_QT_READ_ONLY=1
+check shortcuts-plugin-off "$DIR/shortcuts-plugin-off.expected" H6_STEPS="$DIR/alt-backspace.steps" \
+  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_QT_THEME=
 exit "$status"
