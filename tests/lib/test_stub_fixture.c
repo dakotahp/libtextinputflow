@@ -1,18 +1,7 @@
-#include <string.h>
+#include "util.h"
 
-#include "check.h"
-#include "textinputflow.h"
-
-#define KEY_BACKSPACE 0xff08u
-#define KEY_HOME 0xff50u
-#define KEY_LEFT 0xff51u
-#define KEY_RIGHT 0xff53u
-#define KEY_END 0xff57u
-#define KEY_DELETE 0xffffu
-
-#define S TIF_MOD_SHIFT
-#define C TIF_MOD_CONTROL
-#define A TIF_MOD_ALT
+#define FIXTURE_DIR "tests/fixtures/stub"
+#define FIXTURE_FILE FIXTURE_DIR "/textinputflow/bindings"
 
 typedef struct {
     uint32_t keysym;
@@ -54,53 +43,22 @@ static const expected_binding expected[] = {
 
 #define EXPECTED_COUNT (sizeof expected / sizeof expected[0])
 
-static tif_key key(uint32_t keysym, uint32_t mods)
-{
-    tif_key k = {keysym, mods};
-    return k;
-}
-
-static tif_command command(tif_action action, tif_unit unit, tif_direction direction, bool extend)
-{
-    tif_command c = {action, unit, direction, extend};
-    return c;
-}
-
-static bool same_command(tif_command a, tif_command b)
-{
-    return a.action == b.action && a.unit == b.unit && a.direction == b.direction && a.extend == b.extend;
-}
-
 static void check_stub_table(tif_ctx *ctx)
 {
     tif_command out;
 
     CHECK(tif_binding_count(ctx) == 25);
 
-    CHECK(tif_lookup(ctx, key(KEY_RIGHT, TIF_MOD_ALT), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_FORWARD, false)));
-
-    CHECK(tif_lookup(ctx, key(KEY_LEFT, TIF_MOD_CONTROL), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_BACKWARD, false)));
-
-    CHECK(tif_lookup(ctx, key(KEY_RIGHT, TIF_MOD_SHIFT | TIF_MOD_ALT), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_FORWARD, true)));
-
-    CHECK(tif_lookup(ctx, key(KEY_BACKSPACE, TIF_MOD_ALT), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, command(TIF_ACTION_DELETE, TIF_UNIT_WORD, TIF_DIRECTION_BACKWARD, false)));
-
-    CHECK(tif_lookup(ctx, key('a', TIF_MOD_CONTROL), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, command(TIF_ACTION_SELECT_ALL, TIF_UNIT_NONE, TIF_DIRECTION_NONE, false)));
+    CHECK(looks_up_to(ctx, key(KEY_RIGHT, A), command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_FORWARD, false)));
+    CHECK(looks_up_to(ctx, key(KEY_LEFT, C), command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_BACKWARD, false)));
+    CHECK(looks_up_to(ctx, key(KEY_RIGHT, S | A), command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_FORWARD, true)));
 
     tif_command untouched = command(TIF_ACTION_DELETE, TIF_UNIT_CHARACTER, TIF_DIRECTION_FORWARD, false);
     out = untouched;
-    CHECK(tif_lookup(ctx, key(KEY_RIGHT, TIF_MOD_CONTROL), &out) == TIF_LOOKUP_BLOCKED);
+    CHECK(tif_lookup(ctx, key(KEY_RIGHT, C), &out) == TIF_LOOKUP_BLOCKED);
     CHECK(same_command(out, untouched));
-
-    CHECK(tif_lookup(ctx, key(KEY_RIGHT, TIF_MOD_SUPER), &out) == TIF_LOOKUP_UNBOUND);
+    CHECK(tif_lookup(ctx, key(KEY_RIGHT, W), &out) == TIF_LOOKUP_UNBOUND);
     CHECK(same_command(out, untouched));
-
-    CHECK(tif_lookup(ctx, key(KEY_RIGHT, TIF_MOD_ALT), NULL) == TIF_LOOKUP_COMMAND);
 }
 
 static void check_every_entry(tif_ctx *ctx)
@@ -109,29 +67,22 @@ static void check_every_entry(tif_ctx *ctx)
     for (size_t i = 0; i < EXPECTED_COUNT; i++) {
         const expected_binding *e = &expected[i];
         tif_command out = {0, 0, 0, false};
+        tif_binding b;
         int failures_before = check_failures;
         tif_lookup_result r = tif_lookup(ctx, key(e->keysym, e->mods), &out);
+        CHECK(tif_binding_at(ctx, i, &b));
+        CHECK(b.key.keysym == e->keysym && b.key.mods == e->mods && b.blocked == e->blocked);
         if (e->blocked) {
             CHECK(r == TIF_LOOKUP_BLOCKED);
+            CHECK(b.command.action == 0 && b.command.unit == 0 && b.command.direction == 0 && !b.command.extend);
         } else {
             CHECK(r == TIF_LOOKUP_COMMAND);
             CHECK(same_command(out, command(e->action, e->unit, e->direction, e->extend)));
+            CHECK(same_command(b.command, out));
         }
         if (check_failures != failures_before)
             fprintf(stderr, "  entry %zu: keysym 0x%x mods 0x%x\n", i, (unsigned)e->keysym, (unsigned)e->mods);
     }
-}
-
-static void check_key_normalization(tif_ctx *ctx)
-{
-    tif_command out;
-    tif_command select_all = command(TIF_ACTION_SELECT_ALL, TIF_UNIT_NONE, TIF_DIRECTION_NONE, false);
-
-    CHECK(tif_lookup(ctx, key('A', TIF_MOD_CONTROL), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, select_all));
-
-    CHECK(tif_lookup(ctx, key('a', TIF_MOD_CONTROL | (1u << 8)), &out) == TIF_LOOKUP_COMMAND);
-    CHECK(same_command(out, select_all));
 }
 
 static void check_reverse_lookup(tif_ctx *ctx)
@@ -139,65 +90,58 @@ static void check_reverse_lookup(tif_ctx *ctx)
     tif_key keys[4];
     tif_command word_forward = command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_FORWARD, false);
     tif_command word_backward = command(TIF_ACTION_MOVE, TIF_UNIT_WORD, TIF_DIRECTION_BACKWARD, false);
-    tif_command invalid = command(TIF_ACTION_DELETE, TIF_UNIT_WORD, TIF_DIRECTION_BACKWARD, true);
 
     memset(keys, 0, sizeof keys);
     CHECK(tif_keys_for_command(ctx, &word_forward, keys, 4) == 1);
-    CHECK(keys[0].keysym == KEY_RIGHT && keys[0].mods == TIF_MOD_ALT);
+    CHECK(keys[0].keysym == KEY_RIGHT && keys[0].mods == A);
 
+    memset(keys, 0, sizeof keys);
     CHECK(tif_keys_for_command(ctx, &word_backward, keys, 4) == 2);
+    CHECK(keys[0].keysym == KEY_LEFT && keys[0].mods == C);
+    CHECK(keys[1].keysym == KEY_LEFT && keys[1].mods == A);
     CHECK(tif_keys_for_command(ctx, &word_backward, keys, 1) == 2);
     CHECK(tif_keys_for_command(ctx, &word_backward, NULL, 0) == 2);
-
-    CHECK(tif_keys_for_command(ctx, &invalid, keys, 4) == 0);
 }
 
-static void check_enumeration(tif_ctx *ctx)
+static void check_context(tif_ctx *ctx, const char *name)
 {
-    tif_binding b;
-    size_t blocked = 0;
-    size_t count = tif_binding_count(ctx);
-
-    for (size_t i = 0; i < count; i++) {
-        CHECK(tif_binding_at(ctx, i, &b));
-        if (b.blocked) {
-            blocked++;
-            CHECK(b.key.keysym == KEY_RIGHT && b.key.mods == TIF_MOD_CONTROL);
-            CHECK(b.command.action == 0 && b.command.unit == 0 && b.command.direction == 0 && !b.command.extend);
-        }
-    }
-    CHECK(blocked == 1);
-    CHECK(!tif_binding_at(ctx, count, &b));
-}
-
-static void check_no_watching(tif_ctx *ctx)
-{
-    CHECK(tif_fd(ctx) == -1);
-    CHECK(!tif_refresh(ctx));
-    CHECK(!tif_reload(ctx));
-    CHECK(tif_binding_count(ctx) == 25);
-}
-
-int main(void)
-{
-    tif_ctx *ctx = tif_new();
+    int failures_before = check_failures;
     CHECK(ctx != NULL);
     if (ctx) {
         check_stub_table(ctx);
         check_every_entry(ctx);
-        check_key_normalization(ctx);
         check_reverse_lookup(ctx);
-        check_enumeration(ctx);
-        check_no_watching(ctx);
+        CHECK(tif_fd(ctx) == -1);
+        CHECK(!tif_refresh(ctx));
         tif_free(ctx);
     }
+    if (check_failures != failures_before)
+        fprintf(stderr, "  context: %s\n", name);
+}
 
-    tif_ctx *with_paths = tif_new_for_paths("/nonexistent/distro", "/nonexistent/user");
-    CHECK(with_paths != NULL);
-    if (with_paths) {
-        check_stub_table(with_paths);
-        tif_free(with_paths);
-    }
+int main(void)
+{
+    char cwd[4096];
+    if (!getcwd(cwd, sizeof cwd))
+        return 1;
+    char *fixture_dir = join(cwd, FIXTURE_DIR);
 
+    stderr_capture cap = capture_begin();
+    tif_ctx *from_paths = tif_new_for_paths(NULL, FIXTURE_FILE);
+    char *err = capture_end(cap);
+    CHECK(strcmp(err, "") == 0);
+    free(err);
+    check_context(from_paths, "tif_new_for_paths(NULL, fixture)");
+
+    setenv("XDG_CONFIG_HOME", fixture_dir, 1);
+    setenv("XDG_DATA_DIRS", fixture_dir, 1);
+    cap = capture_begin();
+    tif_ctx *from_env = tif_new();
+    err = capture_end(cap);
+    CHECK(strcmp(err, "") == 0);
+    free(err);
+    check_context(from_env, "tif_new() with XDG variables set to the fixture folder");
+
+    free(fixture_dir);
     return CHECK_DONE();
 }

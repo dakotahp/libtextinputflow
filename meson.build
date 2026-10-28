@@ -10,6 +10,7 @@ project(
 inc = include_directories('include')
 
 subdir('lib')
+subdir('data')
 
 if get_option('tests')
   have_cpp = add_languages('cpp', native: false, required: false)

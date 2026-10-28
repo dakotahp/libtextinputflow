@@ -1,7 +1,11 @@
 libtextinputflow = library(
   'textinputflow',
   'textinputflow.c',
+  'parse.c',
+  'paths.c',
+  'table.c',
   include_directories: inc,
+  gnu_symbol_visibility: 'hidden',
   version: meson.project_version(),
   soversion: '0',
   install: true,
