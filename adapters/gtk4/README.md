@@ -64,9 +64,9 @@ No automated test covers input method order, because the headless test session h
 
 ### App shortcuts
 
-In stock GTK, an app shortcut runs before the focused text field sees the key. The app's shortcuts sit in a window controller, `gtk-application-shortcuts`, which runs in the capture phase, before any widget controller.
+In stock GTK, an app shortcut runs before the focused text field sees the key. The window's shortcut manager runs app shortcuts from its own controller, `gtk-shortcut-manager-capture`, in the capture phase, before any controller on the text field. GTK adds that controller when it creates the window.
 
-The patch adds one more controller to each window that has an application, named `gtk-textinputflow-window`. `gtk_window_set_application()` adds it just after the app shortcut controller. GTK runs later-added controllers first, so ours runs before the app's.
+The patch adds one more controller to each window that has an application, named `gtk-textinputflow-window`. `gtk_window_set_application()` adds it just after the app shortcut controller. GTK runs later-added controllers first, and ours is added after the window was created, so it runs before the shortcut manager.
 
 It takes a key only when all of these are true:
 
