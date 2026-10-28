@@ -266,6 +266,45 @@ Alt+BackSpace       = delete word backward
 
 That makes 25 entries. In the stub, `tif_fd` returns `-1`, and `tif_reload` and `tif_refresh` return `false`. The adapter tickets test against this table, so it must match exactly.
 
+#### Stub fixture (#8)
+
+Ticket #8 removes the stub, so it also adds the same 25 entries as a bindings file: `tests/fixtures/stub/textinputflow/bindings`, with exactly these lines:
+
+```
+Left                = move character backward
+Right               = move character forward
+Shift+Left          = move character backward extend
+Shift+Right         = move character forward extend
+Control+Left        = move word backward
+Control+Right       = none
+Shift+Control+Left  = move word backward extend
+Shift+Control+Right = move word forward extend
+Home                = move line-start
+End                 = move line-end
+Shift+Home          = move line-start extend
+Shift+End           = move line-end extend
+Control+Home        = move document-start
+Control+End         = move document-end
+Shift+Control+Home  = move document-start extend
+Shift+Control+End   = move document-end extend
+BackSpace           = delete character backward
+Delete              = delete character forward
+Control+BackSpace   = delete word backward
+Control+Delete      = delete word forward
+Control+a           = select-all
+Alt+Left            = move word backward
+Alt+Right           = move word forward
+Shift+Alt+Right     = move word forward extend
+Alt+BackSpace       = delete word backward
+```
+
+**"Against the stub table"** in the adapter tickets (#10, #11, #20) means:
+
+- **Before #8 merges:** the #19 stub library, with no extra setup.
+- **After #8 merges:** the real library, with both `XDG_CONFIG_HOME` and `XDG_DATA_DIRS` set to `<repo>/tests/fixtures/stub` for the test apps. Then the distro file and the user file are both the fixture, and the merged table is the same 25 entries. sway passes these variables through to the apps (only `LD_*` variables are stripped).
+
+The expected caret results in those tickets are the same either way.
+
 ### File locations
 
 - User file: `$XDG_CONFIG_HOME/textinputflow/bindings`. If `XDG_CONFIG_HOME` is unset or empty, use `$HOME/.config`.
@@ -460,6 +499,7 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
 - [ ] `tif_lookup` with keysym `0x41` (`A`) and Control matches a `Control+a` binding. Extra modifier bits outside `TIF_MOD_MASK` do not stop a match.
 - [ ] `tif_keys_for_command` returns every key bound to the command, the total count when `max` is smaller, and `0` for an invalid command such as `DELETE` with `extend = true`.
 - [ ] `tif_reload` returns `true` after a file's content changes the table, and `false` after a change that leaves the table the same (for example, a new comment line).
+- [ ] `tests/fixtures/stub/textinputflow/bindings` holds exactly the 25 lines in "Stub fixture (#8)". A unit test loads it with `tif_new_for_paths(NULL, <fixture>)` and checks every entry, as the #19 stub test does. A second check sets `XDG_CONFIG_HOME` and `XDG_DATA_DIRS` to `tests/fixtures/stub` and confirms `tif_new()` gives the same 25 entries.
 - [ ] `meson test -C build` passes with no warnings at `warning_level=2`.
 
 ### 2. #9: Live reload: tif_fd and tif_refresh
