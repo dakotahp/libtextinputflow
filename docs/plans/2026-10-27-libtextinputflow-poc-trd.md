@@ -301,14 +301,22 @@ Alt+BackSpace       = delete word backward
 **"Against the stub table"** in the adapter tickets (#10, #11, #20) means:
 
 - **Before #8 merges:** the #19 stub library, with no extra setup.
-- **After #8 merges:** the real library, with both `XDG_CONFIG_HOME` and `XDG_DATA_DIRS` set to `<repo>/tests/fixtures/stub` for the test apps. Then the distro file and the user file are both the fixture, and the merged table is the same 25 entries. sway passes these variables through to the apps (only `LD_*` variables are stripped).
+- **After #8 merges:** the real library, with these variables for the test apps:
+  - `XDG_CONFIG_HOME=<repo>/tests/fixtures/stub`
+  - `XDG_DATA_DIRS=<repo>/tests/fixtures/stub:/usr/local/share:/usr/share`
+
+  The library takes the first folder in `XDG_DATA_DIRS` that has `textinputflow/bindings`, so the distro file and the user file are both the fixture, and the merged table is the same 25 entries. sway passes these variables through to the apps (only `LD_*` variables are stripped).
+
+  Never set `XDG_DATA_DIRS` to the fixture folder alone. The rest of the desktop reads it too. Without `/usr/share`, `at-spi-bus-launcher` aborts with "Cannot get the default GSettingsSchemaSource", and every harness probe fails.
 
 The expected caret results in those tickets are the same either way.
 
 ### File locations
 
 - User file: `$XDG_CONFIG_HOME/textinputflow/bindings`. If `XDG_CONFIG_HOME` is unset or empty, use `$HOME/.config`.
-- Distro file: the first existing `<dir>/textinputflow/bindings` for `<dir>` in `$XDG_DATA_DIRS`, in order. If `XDG_DATA_DIRS` is unset or empty, use `/usr/local/share:/usr/share`. If none exists, there is no distro file.
+- Distro file: the first existing `<dir>/textinputflow/bindings` for `<dir>` in `$XDG_DATA_DIRS`, in order. If `XDG_DATA_DIRS` is unset or empty, use `/usr/local/share:/usr/share`. If none exists, there is no distro file. `tif_new()` keeps the folder list and searches it again on every load, so a reload can find a distro file installed after start-up.
+- Relative paths in `XDG_CONFIG_HOME` or `XDG_DATA_DIRS` are ignored, as the XDG Base Directory spec requires. Only regular files are read.
+- `tif_new_for_paths()` always uses its two explicit paths.
 
 ### Qt plugin (new): `adapters/qt/`
 
@@ -578,7 +586,7 @@ The harness changes in `tests/harness/`:
 
 The e2e setup:
 
-- `XDG_DATA_DIRS` points at a temp folder holding `textinputflow/bindings`, copied from `data/bindings`.
+- `XDG_DATA_DIRS` is `<temp folder>:/usr/local/share:/usr/share`, where the temp folder holds `textinputflow/bindings`, copied from `data/bindings`. Keep the system folders after it: see the warning in "Stub fixture (#8)".
 - `XDG_CONFIG_HOME` points at a temp folder. Its `textinputflow/bindings` starts as `tests/e2e/user-v1`:
 
   ```
