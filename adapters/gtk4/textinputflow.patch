@@ -1,0 +1,272 @@
+diff -ruN a/gtk/gtktext.c b/gtk/gtktext.c
+--- a/gtk/gtktext.c	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/gtktext.c	2026-10-28 07:41:42.257203721 -0700
+@@ -22,6 +22,7 @@
+ #include "config.h"
+ 
+ #include "gtktextprivate.h"
++#include "gtktextinputflowprivate.h"
+ 
+ #include "gtkaccessibletextprivate.h"
+ #include "gtkactionable.h"
+@@ -2100,6 +2101,7 @@
+                     G_CALLBACK (gtk_text_motion_controller_motion), self);
+   gtk_widget_add_controller (GTK_WIDGET (self), controller);
+ 
++  gtk_text_input_flow_attach (GTK_WIDGET (self));
+   priv->key_controller = gtk_event_controller_key_new ();
+   gtk_event_controller_set_propagation_phase (priv->key_controller, GTK_PHASE_TARGET);
+   gtk_event_controller_set_static_name (priv->key_controller, "gtk-text-key-controller");
+diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
+--- a/gtk/gtktextinputflow.c	1969-12-31 16:00:00.000000000 -0800
++++ b/gtk/gtktextinputflow.c	2026-10-28 07:42:01.105167072 -0700
+@@ -0,0 +1,158 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++
++#include "config.h"
++
++#include "gtktextinputflowprivate.h"
++
++#include "gtkenums.h"
++#include "gtkeventcontroller.h"
++#include "gtkshortcut.h"
++#include "gtkshortcutaction.h"
++#include "gtkshortcutcontroller.h"
++#include "gtkshortcuttrigger.h"
++
++#include <glib-unix.h>
++#include <textinputflow.h>
++
++static tif_ctx *bindings;
++static GListStore *shortcuts;
++
++static gboolean
++swallow_key (GtkWidget *widget,
++             GVariant  *args,
++             gpointer   user_data)
++{
++  return TRUE;
++}
++
++static GdkModifierType
++modifiers_for (uint32_t mods)
++{
++  GdkModifierType result = 0;
++
++  if (mods & TIF_MOD_SHIFT)
++    result |= GDK_SHIFT_MASK;
++  if (mods & TIF_MOD_CONTROL)
++    result |= GDK_CONTROL_MASK;
++  if (mods & TIF_MOD_ALT)
++    result |= GDK_ALT_MASK;
++  if (mods & TIF_MOD_SUPER)
++    result |= GDK_SUPER_MASK;
++
++  return result;
++}
++
++static GtkMovementStep
++movement_step_for (tif_unit unit)
++{
++  switch (unit)
++    {
++    case TIF_UNIT_CHARACTER:
++      return GTK_MOVEMENT_LOGICAL_POSITIONS;
++    case TIF_UNIT_WORD:
++      return GTK_MOVEMENT_WORDS;
++    case TIF_UNIT_LINE_ENDS:
++      return GTK_MOVEMENT_DISPLAY_LINE_ENDS;
++    case TIF_UNIT_DOCUMENT_ENDS:
++    case TIF_UNIT_NONE:
++    default:
++      return GTK_MOVEMENT_BUFFER_ENDS;
++    }
++}
++
++static GtkShortcut *
++shortcut_for (const tif_binding *binding)
++{
++  const tif_command *command = &binding->command;
++  GtkShortcutTrigger *trigger;
++  GtkShortcutAction *action;
++  GVariant *args = NULL;
++  GtkShortcut *shortcut;
++
++  trigger = gtk_keyval_trigger_new (binding->key.keysym, modifiers_for (binding->key.mods));
++
++  if (binding->blocked)
++    {
++      action = gtk_callback_action_new (swallow_key, NULL, NULL);
++    }
++  else if (command->action == TIF_ACTION_MOVE)
++    {
++      action = gtk_signal_action_new ("move-cursor");
++      args = g_variant_new ("(iib)",
++                            movement_step_for (command->unit),
++                            command->direction,
++                            command->extend);
++    }
++  else if (command->action == TIF_ACTION_DELETE &&
++           command->unit == TIF_UNIT_CHARACTER &&
++           command->direction == TIF_DIRECTION_BACKWARD)
++    {
++      action = gtk_signal_action_new ("backspace");
++    }
++  else if (command->action == TIF_ACTION_DELETE)
++    {
++      action = gtk_signal_action_new ("delete-from-cursor");
++      args = g_variant_new ("(ii)",
++                            command->unit == TIF_UNIT_WORD ? GTK_DELETE_WORD_ENDS : GTK_DELETE_CHARS,
++                            command->direction);
++    }
++  else
++    {
++      action = gtk_named_action_new ("selection.select-all");
++    }
++
++  shortcut = gtk_shortcut_new (trigger, action);
++  if (args)
++    gtk_shortcut_set_arguments (shortcut, args);
++
++  return shortcut;
++}
++
++static void
++fill_shortcuts (void)
++{
++  size_t count = tif_binding_count (bindings);
++  GPtrArray *items = g_ptr_array_new_full (count, g_object_unref);
++  tif_binding binding;
++
++  for (size_t i = 0; i < count; i++)
++    {
++      if (tif_binding_at (bindings, i, &binding))
++        g_ptr_array_add (items, shortcut_for (&binding));
++    }
++
++  g_list_store_splice (shortcuts,
++                       0, g_list_model_get_n_items (G_LIST_MODEL (shortcuts)),
++                       items->pdata, items->len);
++  g_ptr_array_unref (items);
++}
++
++static gboolean
++bindings_may_have_changed (int          fd,
++                           GIOCondition condition,
++                           gpointer     user_data)
++{
++  if (tif_refresh (bindings))
++    fill_shortcuts ();
++
++  return G_SOURCE_CONTINUE;
++}
++
++void
++gtk_text_input_flow_attach (GtkWidget *widget)
++{
++  GtkEventController *controller;
++
++  if (shortcuts == NULL)
++    {
++      bindings = tif_new ();
++      shortcuts = g_list_store_new (GTK_TYPE_SHORTCUT);
++      fill_shortcuts ();
++      if (tif_fd (bindings) != -1)
++        g_unix_fd_add (tif_fd (bindings), G_IO_IN, bindings_may_have_changed, NULL);
++    }
++
++  controller = gtk_shortcut_controller_new_for_model (G_LIST_MODEL (shortcuts));
++  gtk_event_controller_set_static_name (controller, "gtk-textinputflow");
++  gtk_widget_add_controller (widget, controller);
++}
+diff -ruN a/gtk/gtktextinputflowprivate.h b/gtk/gtktextinputflowprivate.h
+--- a/gtk/gtktextinputflowprivate.h	1969-12-31 16:00:00.000000000 -0800
++++ b/gtk/gtktextinputflowprivate.h	2026-10-28 07:41:48.152164372 -0700
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++
++#pragma once
++
++#include "gtkwidget.h"
++
++G_BEGIN_DECLS
++
++#ifdef HAVE_TEXTINPUTFLOW
++void gtk_text_input_flow_attach (GtkWidget *widget);
++#else
++static inline void
++gtk_text_input_flow_attach (GtkWidget *widget)
++{
++}
++#endif
++
++G_END_DECLS
+diff -ruN a/gtk/gtktextview.c b/gtk/gtktextview.c
+--- a/gtk/gtktextview.c	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/gtktextview.c	2026-10-28 07:41:42.258373559 -0700
+@@ -55,6 +55,7 @@
+ #include "gtkshortcut.h"
+ #include "gtkshortcuttrigger.h"
+ #include "gtksnapshot.h"
++#include "gtktextinputflowprivate.h"
+ #include "gtktextiterprivate.h"
+ #include "gtktexthandleprivate.h"
+ #include "gtktextviewchildprivate.h"
+@@ -2075,6 +2076,7 @@
+   g_signal_connect (controller, "motion", G_CALLBACK (gtk_text_view_motion), widget);
+   gtk_widget_add_controller (widget, controller);
+ 
++  gtk_text_input_flow_attach (widget);
+   priv->key_controller = gtk_event_controller_key_new ();
+   g_signal_connect (priv->key_controller, "key-pressed",
+                     G_CALLBACK (gtk_text_view_key_controller_key_pressed),
+diff -ruN a/gtk/meson.build b/gtk/meson.build
+--- a/gtk/meson.build	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/meson.build	2026-10-28 07:41:42.253477769 -0700
+@@ -654,6 +654,10 @@
+   gtk_sources += 'gtksearchenginetracker3.c'
+ endif
+ 
++if textinputflow_dep.found()
++  gtk_sources += 'gtktextinputflow.c'
++endif
++
+ gtk_unix_print_main_header = [
+   'gtkunixprint.h'
+ ]
+@@ -997,6 +1001,7 @@
+ endif
+ 
+ gtk_deps += cloudproviders_dep
++gtk_deps += textinputflow_dep
+ 
+ if os_unix
+   gtk_deps += tracker3_dep
+diff -ruN a/meson.build b/meson.build
+--- a/meson.build	2026-10-01 08:47:40.000000000 -0700
++++ b/meson.build	2026-10-28 07:41:42.253136527 -0700
+@@ -525,6 +525,9 @@
+ colord_dep = dependency('colord', version: '>= 0.1.9', required: get_option('colord'))
+ cdata.set('HAVE_COLORD', colord_dep.found())
+ 
++textinputflow_dep = dependency('textinputflow', required: get_option('textinputflow'))
++cdata.set('HAVE_TEXTINPUTFLOW', textinputflow_dep.found())
++
+ if not os_win32
+   if iso_codes_dep.found()
+     cdata.set_quoted('ISO_CODES_PREFIX', iso_codes_dep.get_variable(pkgconfig: 'prefix'))
+diff -ruN a/meson.options b/meson.options
+--- a/meson.options	2026-10-01 08:47:40.000000000 -0700
++++ b/meson.options	2026-10-28 07:41:42.252954128 -0700
+@@ -82,6 +82,11 @@
+        value: 'disabled',
+        description : 'Build colord support for the CUPS printing backend')
+ 
++option('textinputflow',
++       type: 'feature',
++       value: 'disabled',
++       description : 'Take text-editing key bindings from libtextinputflow')
++
+ option('f16c',
+        type: 'feature',
+        value: 'enabled',
