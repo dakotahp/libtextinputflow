@@ -431,10 +431,12 @@ Each table entry becomes one `GtkShortcut`:
 | `delete character backward` | `gtk_signal_action_new ("backspace")`, no arguments |
 | `delete character forward` | `gtk_signal_action_new ("delete-from-cursor")`, arguments `(ii)`: `GTK_DELETE_CHARS`, `1` |
 | `delete word backward` / `forward` | `gtk_signal_action_new ("delete-from-cursor")`, arguments `(ii)`: `GTK_DELETE_WORD_ENDS`, `-1` / `1` |
-| `select-all` | `gtk_named_action_new ("selection.select-all")` |
+| `select-all` | `gtk_callback_action_new()` whose callback, for a `GtkText`, calls `gtk_editable_select_region (GTK_EDITABLE (widget), 0, -1)`, and for a `GtkTextView`, emits its `select-all` signal with `TRUE`, as stock GTK's Ctrl+A does. It returns `TRUE`. Do not use the `selection.select-all` action: `GtkText` disables it until the cursor or selection changes, so after `gtk_editable_set_text` on an empty entry it can do nothing. |
 | blocked key | `gtk_callback_action_new()` whose callback returns `TRUE` and does nothing |
 
-  Move steps: character → `GTK_MOVEMENT_LOGICAL_POSITIONS`, word → `GTK_MOVEMENT_WORDS`, line ends → `GTK_MOVEMENT_DISPLAY_LINE_ENDS`, document ends → `GTK_MOVEMENT_BUFFER_ENDS`. Count is the direction, `-1` or `1`.
+  Move steps: character → `GTK_MOVEMENT_VISUAL_POSITIONS`, word → `GTK_MOVEMENT_WORDS`, line ends → `GTK_MOVEMENT_DISPLAY_LINE_ENDS`, document ends → `GTK_MOVEMENT_BUFFER_ENDS`. Count is the direction, `-1` or `1`.
+
+  Character moves use `VISUAL_POSITIONS` because stock GTK binds Left and Right to it (`gtktext.c:1438`, `gtktextview.c:1703`), and the default bindings take over those keys in every field. `LOGICAL_POSITIONS` would reverse Left and Right in right-to-left text, and would lose GTK's edge behavior: the error bell and focus move in `GtkText` (`gtk_widget_keynav_failed`), and the focus move from a `GtkTextView` with a hidden cursor (`gtktextview.c:6518`).
 
 These are the signals and actions GTK's own bindings use, so GTK's movement and deletion code runs unchanged. Both `delete-from-cursor` handlers delete the selection first when there is one (`gtktext.c:4189`, `gtktextview.c:7044`).
 
