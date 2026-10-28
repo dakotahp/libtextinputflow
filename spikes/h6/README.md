@@ -16,6 +16,8 @@ Debug switches:
 
 - `H6_ONLY=gtk4-entry` runs the cases whose name starts with this value (`gtk4-entry`, `gtk4-textview`, `qt-lineedit`, `qt-plaintextedit`). `H6_ONLY=gtk4` runs both GTK cases.
 - `H6_GTK_APP=app.py` replaces the GTK test app. It must take `entry` or `textview` as its argument.
+- `H6_LD_LIBRARY_PATH=dir` sets `LD_LIBRARY_PATH` for the apps, for example to load a locally built GTK. A plain `LD_LIBRARY_PATH` does not work: see "What it took".
+- `H6_DUMP=1` also logs which `libgtk-4` or `libQt6Gui` each app loaded.
 - A step whose value is `@USR1`, for example `reload:@USR1`, sends `SIGUSR1` to the app instead of keys.
 - `H6_DUMP=1` writes each app's accessibility tree to `results.jsonl.log`.
 - `H6_STEPS=steps.txt` replaces the default key steps. Each line is `label:wtype args`, and the first line is usually `start:`.
@@ -47,5 +49,6 @@ Each item below cost a failed run. Later test code must keep them.
 - **Keep one virtual keyboard alive.** The headless seat has no keyboard, so no window gets keyboard focus, and AT-SPI2 reports no focused field. Each `wtype` run adds a keyboard and removes it on exit. One idle `wtype -s 600000` keeps a keyboard on the seat.
 - **Use the system Python.** A `mise` or venv `python3` on `PATH` lacks `gi` and `PyQt6`.
 - **Force GTK's cairo renderer** (`GSK_RENDERER=cairo`). The Vulkan renderer loses its surface on sway's software backend.
+- **Pass library paths under another name.** Arch's `sway` has the `cap_sys_nice` file capability, so glibc removes `LD_LIBRARY_PATH` from its environment, and the apps never see it. Use `H6_LD_LIBRARY_PATH`.
 - **Turn on Qt accessibility** with `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`.
 - **Call `Atspi.Text.get_selection(text, i)` directly.** In Python, `text.get_selection` resolves to a deprecated method with a different signature.
