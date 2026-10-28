@@ -49,7 +49,7 @@ run() {
   local name=$1 gtk_lib=$2 steps=$3
   H6_ONLY=gtk4 H6_DUMP=1 H6_STEPS="$steps" H6_LD_LIBRARY_PATH="$gtk_lib:$TIF_LIB" \
     XDG_CONFIG_HOME="$STUB" XDG_DATA_DIRS="$STUB:/usr/local/share:/usr/share" \
-    "$ROOT/spikes/h6/run.sh" "$OUT/$name.jsonl" >/dev/null 2>&1 || true
+    "$ROOT/tests/harness/run.sh" "$OUT/$name.jsonl" >/dev/null 2>&1 || true
 }
 
 check_results() {

@@ -46,7 +46,7 @@ A text field beats an app shortcut only for the standard keys that the widget cl
 
 `meson test -C build qt_keybindings` loads the plugin without a display and checks its key bindings against `tests/fixtures/stub`.
 
-Two more checks start a headless sway with a private D-Bus session. They do not work inside a sandbox. Read `spikes/h6/README.md` first.
+Two more checks start a headless sway with a private D-Bus session. They do not work inside a sandbox. Read `tests/harness/README.md` first.
 
 - `adapters/qt/tests/check-theme.sh build` compares a dump of all theme values under `gtk3` and under `textinputflow`. Only the `keys` lines may differ.
-- `adapters/qt/tests/check-keys.sh build` sends keys to `QLineEdit` and `QPlainTextEdit` through `spikes/h6/run.sh` and compares the caret results with `keys.expected` and `shortcuts.expected`.
+- `adapters/qt/tests/check-keys.sh build` sends keys to `QLineEdit` and `QPlainTextEdit` through `tests/harness/run.sh` and compares the caret results with `keys.expected` and `shortcuts.expected`.

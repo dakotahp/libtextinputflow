@@ -33,7 +33,7 @@ check() {
   env -u TEXTINPUTFLOW_QT_BASE_THEME \
     H6_ONLY=qt H6_QT_THEME=textinputflow QT_PLUGIN_PATH="$BUILD/adapters/qt" \
     XDG_CONFIG_HOME="$STUB" XDG_DATA_DIRS="$STUB:/usr/local/share:/usr/share" "$@" \
-    "$ROOT/spikes/h6/run.sh" "$OUT/$name.jsonl" >/dev/null 2>&1 || true
+    "$ROOT/tests/harness/run.sh" "$OUT/$name.jsonl" >/dev/null 2>&1 || true
   if diff -u --label expected --label actual "$expected" <(summarize "$OUT/$name.jsonl"); then
     echo "ok   $name"
   else

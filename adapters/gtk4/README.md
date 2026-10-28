@@ -68,10 +68,10 @@ An app shortcut on the same key still runs before the text field, as in stock GT
 
 ## Checks
 
-`adapters/gtk4/tests/check-keys.sh <work dir> <library build dir>` builds GTK with the option enabled and disabled, then sends keys to `GtkEntry` and `GtkTextView` through `spikes/h6/run.sh`. It uses the bindings in `tests/fixtures/stub`.
+`adapters/gtk4/tests/check-keys.sh <work dir> <library build dir>` builds GTK with the option enabled and disabled, then sends keys to `GtkEntry` and `GtkTextView` through `tests/harness/run.sh`. It uses the bindings in `tests/fixtures/stub`.
 
 - Enabled build: the caret results must match `tests/keys.expected`. Alt+Right moves a word, and the blocked Ctrl+Right does nothing, so the library is in control.
 - Disabled build: Ctrl+Right must move 0 → 5, as in stock GTK (`tests/stock.expected`).
 - Both: the apps must load the GTK that was just built. With the enabled build they must also load this repo's `libtextinputflow.so.0`, and with the disabled build they must not.
 
-The check starts a headless sway with a private D-Bus session, so it does not work inside a sandbox. Read `spikes/h6/README.md` first.
+The check starts a headless sway with a private D-Bus session, so it does not work inside a sandbox. Read `tests/harness/README.md` first.
