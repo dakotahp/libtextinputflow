@@ -77,5 +77,6 @@ run_case() {
 GTK_APP=${H6_GTK_APP:-$DIR/gtk4_app.py}
 run_case gtk4 entry tif-gtk4 "$PY" "$GTK_APP" entry
 run_case gtk4 textview tif-gtk4 "$PY" "$GTK_APP" textview
-run_case qt lineedit tif-qt "$PY" "$DIR/qt_app.py" entry
-run_case qt plaintextedit tif-qt "$PY" "$DIR/qt_app.py" textview
+QT_APP=${H6_QT_APP:-$DIR/qt_app.py}
+run_case qt lineedit tif-qt "$PY" "$QT_APP" entry
+run_case qt plaintextedit tif-qt "$PY" "$QT_APP" textview

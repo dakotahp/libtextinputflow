@@ -16,3 +16,8 @@ if get_option('tests')
   have_cpp = add_languages('cpp', native: false, required: false)
   subdir('tests/lib')
 endif
+
+qt_option = get_option('qt')
+if not qt_option.disabled() and add_languages('cpp', native: false, required: qt_option)
+  subdir('adapters/qt')
+endif
