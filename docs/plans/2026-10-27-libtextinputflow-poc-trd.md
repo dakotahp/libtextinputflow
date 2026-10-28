@@ -655,6 +655,34 @@ The e2e setup:
 - [ ] `gtk_text_has_preedit` and `gtk_text_view_has_preedit` return `TRUE` only when the widget's preedit string is not empty. A comment in the patch states that the window controller must not take keys while preedit text shows, so that input methods keep working.
 - [ ] `adapters/gtk4/README.md` describes the window controller and states that input method composition is not covered by an automated test.
 
+### 7. #27: Qt: text bindings beat app shortcuts
+
+**What:** Qt text widgets claim priority over app shortcuts (by accepting the `ShortcutOverride` event) only for a fixed list of `StandardKey`s, and the list differs per widget. So today an app's `QAction` or `QShortcut` beats some text bindings: Alt+BackSpace (delete word backward) loses in `QLineEdit` and `QPlainTextEdit`, and Shift+Ctrl+End loses in `QLineEdit`. Add an application-wide event filter to the Qt plugin from #10, so that in a focused text widget, every key the library binds to a command beats app shortcuts, as "Text bindings and app shortcuts" requires. This is the Qt twin of #20.
+**Areas:** `adapters/qt/`, `adapters/qt/tests/`, `adapters/qt/README.md`
+**Depends on:** implementation (#10). It extends #10's plugin and reuses its context and key conversion.
+**Size:** M
+
+**Design**
+
+- The plugin installs one event filter on the application object (`QCoreApplication::instance()->installEventFilter`). Install it on the first `keyBindings()` call, because the application object may not exist yet when the theme is created.
+- On `QEvent::ShortcutOverride` only, the filter acts when all of these are true:
+  1. The receiver is the application's focus object, and it inherits one of `QLineEdit`, `QTextEdit`, `QPlainTextEdit`, `QQuickTextInput` or `QQuickTextEdit`. Check with `QObject::inherits()`, so the plugin does not link Qt Widgets or Qt Quick.
+  2. The key, converted to a `tif_key` with the plugin's key table, gives `TIF_LOOKUP_COMMAND` from `tif_lookup`.
+- Then it calls `event->accept()` and returns `false`, so Qt does not run the app shortcut, and the key press goes on to the text widget. The widget then runs the command through the `StandardKey` lists that the plugin already supplies.
+- For a blocked or unbound key, or any other event, the filter does nothing and returns `false`, so app shortcuts still run.
+
+**Acceptance criteria**
+
+- [ ] A test app `adapters/qt/tests/qt_shortcut_app.py` (extend #10's) has `QShortcut`s with `Qt::ApplicationShortcut` context on Alt+Right, Ctrl+Right, Alt+BackSpace and Shift+Ctrl+End. Each one's slot sets the caret to position 3, which no text command produces from these start points.
+- [ ] Against the stub table (with the fixture setup in "Stub fixture (#8)"), with text `alpha beta gamma`, in both `QLineEdit` and `QPlainTextEdit`:
+  - from caret 0, Alt+Right: caret 6 (text binding won)
+  - from caret 0, Ctrl+Right (blocked): caret 3 (app shortcut ran)
+  - from caret 16, Alt+BackSpace: caret 11 (text binding won, the word `gamma` is deleted)
+  - from caret 0, Shift+Ctrl+End: caret 16, selection 0 to 16 (text binding won)
+- [ ] With `QT_QPA_PLATFORMTHEME` unset (plugin off), the same app gives caret 3 for Alt+BackSpace, which shows the test detects the problem.
+- [ ] The filter acts only on `ShortcutOverride`. It does not change any other event, and it does nothing when the focus object is not one of the five text classes.
+- [ ] `adapters/qt/README.md` describes the filter, and states that input method composition is not covered by an automated test.
+
 ## Test Strategy
 
 - **Library unit tests (#19, #8, #9)** are plain C programs run by `meson test`. They create temp folders and files, and set `HOME` and the XDG variables. Parsing is where implementations most often differ, so every error case in #8 has its own test that checks both the skip and the stderr line. Capture stderr by redirecting `fd 2` to a temp file around the call.
