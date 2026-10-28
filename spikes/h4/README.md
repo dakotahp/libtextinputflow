@@ -36,7 +36,11 @@ The test needs no GTK patch. The test app adds the controller that the patch wou
 
 ## Findings for the GTK 4 patch (#11)
 
-1. **Insert the controller before the input method controller, not at the end.** `GtkText` and `GtkTextView` create their key controller, which feeds the input method, in their own init (`gtktext.c:2103`, `gtktextview.c:2078`). That is after the built-in shortcuts, so today the input method sees keys first. A controller added after init, as in this test, runs before the input method. The patch should create it just before those lines. Then the order is: input method, our bindings, built-in bindings. This is the order the design asks for.
+1. **In `GtkTextView`, insert the controller before the input method controller, not at the end.** `GtkText` and `GtkTextView` create their key controller, which feeds the input method, in their own init (`gtktext.c:2103`, `gtktextview.c:2078`). The order is: input method, our bindings, built-in bindings, as the design asks.
+   - **`GtkText`:** its key controller runs in the `TARGET` phase (`gtktext.c:2104`), which always comes before `BUBBLE`. So the input method runs first wherever our controller goes.
+   - **`GtkTextView`:** its key controller stays in `BUBBLE`, the same phase as ours, so list order decides. A controller added after init, as in this test, would run before the input method. The patch must create ours just before `gtktextview.c:2078`.
+
+   (An earlier version of this finding said both widgets need the insert point. Reading the phases showed only `GtkTextView` does.)
 2. **The patch can be small.** One controller per widget, fed from one shared `GListModel` that the library adapter updates. Each item emits the existing `move-cursor`, `delete-from-cursor` or `select-all` signal. No movement code changes.
 3. **Live reload is free.** Changing the model is enough. The widgets need no rebuild and no signal.
 4. **For `GtkEntry`, the target is the inner `GtkText`.** `move-cursor` is a signal on `GtkText`, which `gtk_editable_get_delegate()` returns.
