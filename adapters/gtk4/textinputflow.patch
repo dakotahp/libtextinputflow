@@ -19,20 +19,22 @@ diff -ruN a/gtk/gtktext.c b/gtk/gtktext.c
    gtk_event_controller_set_static_name (priv->key_controller, "gtk-text-key-controller");
 diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 --- a/gtk/gtktextinputflow.c	1969-12-31 16:00:00.000000000 -0800
-+++ b/gtk/gtktextinputflow.c	2026-10-28 07:42:01.105167072 -0700
-@@ -0,0 +1,158 @@
++++ b/gtk/gtktextinputflow.c	2026-10-28 07:59:44.478256051 -0700
+@@ -0,0 +1,173 @@
 +/* SPDX-License-Identifier: LGPL-2.1-or-later */
 +
 +#include "config.h"
 +
 +#include "gtktextinputflowprivate.h"
 +
++#include "gtkeditable.h"
 +#include "gtkenums.h"
 +#include "gtkeventcontroller.h"
 +#include "gtkshortcut.h"
 +#include "gtkshortcutaction.h"
 +#include "gtkshortcutcontroller.h"
 +#include "gtkshortcuttrigger.h"
++#include "gtktextview.h"
 +
 +#include <glib-unix.h>
 +#include <textinputflow.h>
@@ -45,6 +47,19 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +             GVariant  *args,
 +             gpointer   user_data)
 +{
++  return TRUE;
++}
++
++static gboolean
++select_all (GtkWidget *widget,
++            GVariant  *args,
++            gpointer   user_data)
++{
++  if (GTK_IS_TEXT_VIEW (widget))
++    g_signal_emit_by_name (widget, "select-all", TRUE);
++  else
++    gtk_editable_select_region (GTK_EDITABLE (widget), 0, -1);
++
 +  return TRUE;
 +}
 +
@@ -71,7 +86,7 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  switch (unit)
 +    {
 +    case TIF_UNIT_CHARACTER:
-+      return GTK_MOVEMENT_LOGICAL_POSITIONS;
++      return GTK_MOVEMENT_VISUAL_POSITIONS;
 +    case TIF_UNIT_WORD:
 +      return GTK_MOVEMENT_WORDS;
 +    case TIF_UNIT_LINE_ENDS:
@@ -121,7 +136,7 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +    }
 +  else
 +    {
-+      action = gtk_named_action_new ("selection.select-all");
++      action = gtk_callback_action_new (select_all, NULL, NULL);
 +    }
 +
 +  shortcut = gtk_shortcut_new (trigger, action);

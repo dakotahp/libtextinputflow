@@ -40,7 +40,7 @@ The patch adds a GTK build option, `textinputflow`, which is `disabled` by defau
 
 `GtkText` and `GtkTextView` each get one more shortcut controller, named `gtk-textinputflow`. All controllers share one list of shortcuts, built from the library's binding table:
 
-- A key bound to a command emits the widget's own `move-cursor`, `backspace` or `delete-from-cursor` signal, or activates its `selection.select-all` action. So GTK's own movement and deletion code runs.
+- A key bound to a command emits the widget's own `move-cursor`, `backspace` or `delete-from-cursor` signal, with the same arguments as GTK's own bindings. So GTK's own movement and deletion code runs. Select all selects the whole text, as stock Ctrl+A does.
 - A key bound to `none` does nothing.
 - A key the bindings files do not name reaches GTK's built-in bindings, as in stock GTK.
 

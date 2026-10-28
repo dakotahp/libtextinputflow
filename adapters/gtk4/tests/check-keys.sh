@@ -81,6 +81,6 @@ check_loaded enabled "$TIF_LIB/libtextinputflow.so.0" 2
 run disabled "$DISABLED" "$DIR/stock.steps"
 check_results disabled "$DIR/stock.expected"
 check_loaded disabled "$DISABLED/libgtk-4.so" 2
-check_loaded disabled "$TIF_LIB/libtextinputflow.so.0" 0
+check_loaded disabled "libtextinputflow.so" 0
 
 exit "$status"

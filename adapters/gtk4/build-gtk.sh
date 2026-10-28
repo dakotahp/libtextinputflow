@@ -27,8 +27,10 @@ export PATH PKG_CONFIG_PATH
 
 if [ ! -f "$WORK/gtk-$VERSION.tar.xz" ]; then
   curl -sfL -o "$WORK/gtk-$VERSION.tar.xz.part" "$URL"
-  curl -sfL -o "$WORK/gtk-$VERSION.sha256sum" "${URL%.tar.xz}.sha256sum"
   mv "$WORK/gtk-$VERSION.tar.xz.part" "$WORK/gtk-$VERSION.tar.xz"
+fi
+if [ ! -f "$WORK/gtk-$VERSION.sha256sum" ]; then
+  curl -sfL -o "$WORK/gtk-$VERSION.sha256sum" "${URL%.tar.xz}.sha256sum"
 fi
 (cd "$WORK" && sha256sum -c --ignore-missing --quiet --strict "gtk-$VERSION.sha256sum") >&2
 grep -q " gtk-$VERSION.tar.xz\$" "$WORK/gtk-$VERSION.sha256sum"
@@ -38,14 +40,23 @@ if [ ! -d "$SRC" ]; then
   tar -xJf "$WORK/gtk-$VERSION.tar.xz" -C "$WORK"
 fi
 
+apply() {
+  if ! patch -d "$SRC" -p1 --quiet --batch --forward "$@" >&2; then
+    rm -rf "$SRC" "$APPLIED"
+    echo "patch failed; removed $SRC, run again to start from a fresh tarball" >&2
+    exit 1
+  fi
+}
+
 # Swapping one applied patch for another keeps untouched files' timestamps, so rebuilds stay small.
 if ! cmp -s "$PATCH" "$APPLIED"; then
   if [ -f "$APPLIED" ]; then
-    patch -d "$SRC" -p1 -R --quiet --batch < "$APPLIED" >&2 || { rm -rf "$SRC" "$APPLIED"; exit 1; }
+    apply -R < "$APPLIED"
     rm "$APPLIED"
   fi
-  patch -d "$SRC" -p1 --quiet --batch < "$PATCH" >&2 || { rm -rf "$SRC"; exit 1; }
-  cp "$PATCH" "$APPLIED"
+  apply < "$PATCH"
+  cp "$PATCH" "$APPLIED.part"
+  mv "$APPLIED.part" "$APPLIED"
 fi
 
 OPTIONS=(
