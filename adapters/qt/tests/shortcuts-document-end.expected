@@ -1,0 +1,2 @@
+plaintextedit start 0 - "alpha beta gamma"
+plaintextedit Shift+Ctrl+End 16 0-16 "alpha beta gamma"

@@ -1,0 +1,2 @@
+start:
+Shift+Ctrl+End:-M shift -M ctrl -k End -m ctrl -m shift
