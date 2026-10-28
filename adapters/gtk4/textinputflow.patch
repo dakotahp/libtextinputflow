@@ -34,14 +34,16 @@ diff -ruN a/gtk/gtktext.c b/gtk/gtktext.c
  {
 diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 --- a/gtk/gtktextinputflow.c	1969-12-31 16:00:00.000000000 -0800
-+++ b/gtk/gtktextinputflow.c	2026-10-28 09:19:14.166682163 -0700
-@@ -0,0 +1,262 @@
++++ b/gtk/gtktextinputflow.c	2026-10-28 09:35:46.993195022 -0700
+@@ -0,0 +1,298 @@
 +/* SPDX-License-Identifier: LGPL-2.1-or-later */
 +
 +#include "config.h"
 +
 +#include "gtktextinputflowprivate.h"
 +
++#include "gtkapplicationaccelsprivate.h"
++#include "gtkapplicationprivate.h"
 +#include "gtkeditable.h"
 +#include "gtkenums.h"
 +#include "gtkeventcontroller.h"
@@ -98,23 +100,6 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  return result;
 +}
 +
-+static uint32_t
-+key_mods_for (GdkModifierType state)
-+{
-+  uint32_t result = 0;
-+
-+  if (state & GDK_SHIFT_MASK)
-+    result |= TIF_MOD_SHIFT;
-+  if (state & GDK_CONTROL_MASK)
-+    result |= TIF_MOD_CONTROL;
-+  if (state & GDK_ALT_MASK)
-+    result |= TIF_MOD_ALT;
-+  if (state & GDK_SUPER_MASK)
-+    result |= TIF_MOD_SUPER;
-+
-+  return result;
-+}
-+
 +static GtkMovementStep
 +movement_step_for (tif_unit unit)
 +{
@@ -133,40 +118,10 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +    }
 +}
 +
-+static GtkShortcutAction *
-+action_for (const tif_command  *command,
-+            GVariant          **args)
-+{
-+  *args = NULL;
-+
-+  if (command->action == TIF_ACTION_MOVE)
-+    {
-+      *args = g_variant_new ("(iib)",
-+                             movement_step_for (command->unit),
-+                             command->direction,
-+                             command->extend);
-+      return gtk_signal_action_new ("move-cursor");
-+    }
-+
-+  if (command->action == TIF_ACTION_DELETE &&
-+      command->unit == TIF_UNIT_CHARACTER &&
-+      command->direction == TIF_DIRECTION_BACKWARD)
-+    return gtk_signal_action_new ("backspace");
-+
-+  if (command->action == TIF_ACTION_DELETE)
-+    {
-+      *args = g_variant_new ("(ii)",
-+                             command->unit == TIF_UNIT_WORD ? GTK_DELETE_WORD_ENDS : GTK_DELETE_CHARS,
-+                             command->direction);
-+      return gtk_signal_action_new ("delete-from-cursor");
-+    }
-+
-+  return gtk_callback_action_new (select_all, NULL, NULL);
-+}
-+
 +static GtkShortcut *
 +shortcut_for (const tif_binding *binding)
 +{
++  const tif_command *command = &binding->command;
 +  GtkShortcutTrigger *trigger;
 +  GtkShortcutAction *action;
 +  GVariant *args = NULL;
@@ -175,13 +130,40 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  trigger = gtk_keyval_trigger_new (binding->key.keysym, modifiers_for (binding->key.mods));
 +
 +  if (binding->blocked)
-+    action = gtk_callback_action_new (swallow_key, NULL, NULL);
++    {
++      action = gtk_callback_action_new (swallow_key, NULL, NULL);
++    }
++  else if (command->action == TIF_ACTION_MOVE)
++    {
++      action = gtk_signal_action_new ("move-cursor");
++      args = g_variant_new ("(iib)",
++                            movement_step_for (command->unit),
++                            command->direction,
++                            command->extend);
++    }
++  else if (command->action == TIF_ACTION_DELETE &&
++           command->unit == TIF_UNIT_CHARACTER &&
++           command->direction == TIF_DIRECTION_BACKWARD)
++    {
++      action = gtk_signal_action_new ("backspace");
++    }
++  else if (command->action == TIF_ACTION_DELETE)
++    {
++      action = gtk_signal_action_new ("delete-from-cursor");
++      args = g_variant_new ("(ii)",
++                            command->unit == TIF_UNIT_WORD ? GTK_DELETE_WORD_ENDS : GTK_DELETE_CHARS,
++                            command->direction);
++    }
 +  else
-+    action = action_for (&binding->command, &args);
++    {
++      action = gtk_callback_action_new (select_all, NULL, NULL);
++    }
 +
 +  shortcut = gtk_shortcut_new (trigger, action);
 +  if (args)
 +    gtk_shortcut_set_arguments (shortcut, args);
++  g_object_set_data_full (G_OBJECT (shortcut), "gtk-textinputflow-binding",
++                          g_memdup2 (binding, sizeof *binding), g_free);
 +
 +  return shortcut;
 +}
@@ -245,6 +227,67 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +}
 +
 +static gboolean
++is_editable (GtkWidget *focus)
++{
++  if (GTK_IS_TEXT (focus))
++    return gtk_editable_get_editable (GTK_EDITABLE (focus));
++
++  return gtk_text_view_get_editable (GTK_TEXT_VIEW (focus));
++}
++
++static GtkShortcut *
++find_shortcut (GListModel *model,
++               GdkEvent   *event)
++{
++  guint n_items = g_list_model_get_n_items (model);
++
++  for (guint i = 0; i < n_items; i++)
++    {
++      GtkShortcut *shortcut = g_list_model_get_item (model, i);
++
++      if (gtk_shortcut_trigger_trigger (gtk_shortcut_get_trigger (shortcut), event, FALSE) == GDK_KEY_MATCH_EXACT)
++        return shortcut;
++
++      g_object_unref (shortcut);
++    }
++
++  return NULL;
++}
++
++static gboolean
++app_shortcut_matches (GtkApplication *application,
++                      GdkEvent       *event)
++{
++  GtkApplicationAccels *accels = gtk_application_get_application_accels (application);
++  GtkShortcut *shortcut = find_shortcut (gtk_application_accels_get_shortcuts (accels), event);
++
++  if (shortcut == NULL)
++    return FALSE;
++
++  g_object_unref (shortcut);
++  return TRUE;
++}
++
++static gboolean
++binding_takes_key (GtkWidget *focus,
++                   GdkEvent  *event)
++{
++  GtkShortcut *shortcut = find_shortcut (G_LIST_MODEL (shortcuts), event);
++  const tif_binding *binding;
++  gboolean result;
++
++  if (shortcut == NULL)
++    return FALSE;
++
++  binding = g_object_get_data (G_OBJECT (shortcut), "gtk-textinputflow-binding");
++  result = !binding->blocked &&
++           (binding->command.action != TIF_ACTION_DELETE || is_editable (focus));
++  g_object_unref (shortcut);
++
++  return result;
++}
++
++static gboolean
 +window_key_pressed (GtkEventControllerKey *controller,
 +                    guint                  keyval,
 +                    guint                  keycode,
@@ -252,13 +295,11 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +                    gpointer               user_data)
 +{
 +  GtkWidget *window = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller));
++  GtkApplication *application = gtk_window_get_application (GTK_WINDOW (window));
 +  GtkWidget *focus = gtk_root_get_focus (GTK_ROOT (window));
-+  tif_key key = { keyval, key_mods_for (state) };
-+  tif_command command;
-+  GtkShortcutAction *action;
-+  GVariant *args;
++  GdkEvent *event = gtk_event_controller_get_current_event (GTK_EVENT_CONTROLLER (controller));
 +
-+  if (gtk_window_get_application (GTK_WINDOW (window)) == NULL)
++  if (application == NULL)
 +    return FALSE;
 +
 +  if (!GTK_IS_TEXT (focus) && !GTK_IS_TEXT_VIEW (focus))
@@ -269,17 +310,12 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  if (has_preedit (focus))
 +    return FALSE;
 +
-+  if (tif_lookup (bindings, key, &command) != TIF_LOOKUP_COMMAND)
++  if (!app_shortcut_matches (application, event) || !binding_takes_key (focus, event))
 +    return FALSE;
 +
-+  action = action_for (&command, &args);
-+  if (args)
-+    g_variant_ref_sink (args);
-+  gtk_shortcut_action_activate (action, GTK_SHORTCUT_ACTION_EXCLUSIVE, focus, args);
-+  g_clear_pointer (&args, g_variant_unref);
-+  g_object_unref (action);
-+
-+  return TRUE;
++  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
++  return gtk_event_controller_key_forward (controller, focus);
++  G_GNUC_END_IGNORE_DEPRECATIONS
 +}
 +
 +void

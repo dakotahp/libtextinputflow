@@ -71,12 +71,13 @@ The patch adds one more controller to each window that has an application, named
 It takes a key only when all of these are true:
 
 1. The window's focus widget is a `GtkText` or a `GtkTextView`.
-2. That widget shows no preedit text. While an input method composes text, it must get every key first.
-3. The bindings files bind the key to a command.
+2. That widget shows no preedit text. While an input method composes text, the controller leaves every key alone, so input methods keep working as in stock GTK.
+3. An app shortcut matches the key.
+4. The bindings files bind the key to a command, not to `none`. For a delete command, the text must also be editable.
 
-Then it runs the command on the focus widget, with the same action as the widget's own controller, and the app shortcut does not run. A key bound to `none`, or not named in the bindings files, goes on to the app shortcut, as in stock GTK.
+Then it hands the key to the focus widget, and the app shortcut does not run. The widget handles the key as it does without an app shortcut: the input method first, then the textinputflow bindings. Any other key goes through GTK as before, so a blocked key, or a key the bindings files do not name, still runs the app shortcut.
 
-No automated test covers input method composition with this controller, because the headless test session has no input method. Check it by hand with a real input method.
+No automated test covers input method composition with this controller, because the headless test session has no input method. Check it by hand with a real input method. By reasoning only: while preedit text shows, the controller leaves the key alone, and the app shortcut runs as in stock GTK. With no preedit text, the forwarded key reaches the input method before the bindings, as it does without an app shortcut.
 
 ## Checks
 

@@ -354,7 +354,7 @@ When a text field has focus, the bindings file decides what its keys do, even wh
 
 Exception: while an input method is composing text (preedit text is showing), the input method gets the key first, as today.
 
-Neither toolkit does this fully today. In GTK 4, app shortcuts run first, in the window's capture phase (`gtkwindow.c:2965`). In Qt, text widgets accept the `ShortcutOverride` event only for a fixed list of `StandardKey`s, and the list differs per widget (`qwidgetlinecontrol.cpp:1541`). So in Qt the text field wins for some commands, such as word moves, and the app wins for others, such as Alt+BackSpace (delete word backward) in `QLineEdit` and `QPlainTextEdit`. #20 makes GTK follow this rule, and #27 makes Qt follow it.
+Neither toolkit does this fully today. In GTK 4, app shortcuts run first, in the window's capture phase (`gtkwindow.c:2965`, run by the window's `gtk-shortcut-manager-capture` controller). In Qt, text widgets accept the `ShortcutOverride` event only for a fixed list of `StandardKey`s, and the list differs per widget (`qwidgetlinecontrol.cpp:1541`). So in Qt the text field wins for some commands, such as word moves, and the app wins for others, such as Alt+BackSpace (delete word backward) in `QLineEdit` and `QPlainTextEdit`. #20 makes GTK follow this rule, and #27 makes Qt follow it.
 
 ### Key matching
 
@@ -444,20 +444,22 @@ A key the library does not mention reaches the built-in class bindings as before
 
 #### Beating app shortcuts (#20)
 
-GTK 4 runs app shortcuts in a window controller named `gtk-application-shortcuts`, in `GTK_PHASE_CAPTURE`. `gtk_window_set_application()` adds it (`gtkwindow.c:2963` to `2967` in 4.24.1). A widget's controller cannot run before it, so the patch adds one more controller to the window:
+GTK 4 runs app shortcuts from the window's shortcut manager. `gtk_window_set_application()` adds a controller named `gtk-application-shortcuts` (`gtkwindow.c:2963` to `2967` in 4.24.1). It has `GTK_SHORTCUT_SCOPE_GLOBAL`, so its own `handle_event` returns `FALSE` (`gtkshortcutcontroller.c:454`). The root's `gtk-shortcut-manager-capture` controller runs its shortcuts instead, in `GTK_PHASE_CAPTURE`. GTK creates that controller when it creates the window (`gtkwidget.c:2521`). A widget's controller cannot run before it, so the patch adds one more controller to the window:
 
 ```c
 void gtk_text_input_flow_attach_window (GtkWindow *window);
 ```
 
-- `gtk_window_set_application()` calls it on the line just after it adds the app shortcut controller. GTK runs later-added controllers first, so ours runs before the app's. It runs only for windows that have an application, because only they have app shortcuts.
+- `gtk_window_set_application()` calls it on the line just after it adds the app shortcut controller. GTK runs later-added controllers first, and ours is added after the window was created, so ours runs before the shortcut manager. It acts only for windows that have an application, because only they have app shortcuts. A second call on the same window replaces the controller from the first.
 - It adds a `GtkEventControllerKey` in `GTK_PHASE_CAPTURE`, static name `gtk-textinputflow-window`.
 - On `key-pressed`, it returns `FALSE` (does nothing) unless all of these are true:
   1. The window's focus widget (`gtk_root_get_focus`) is a `GtkText` or a `GtkTextView`.
   2. That widget has no preedit text. The patch adds the private helpers `gtk_text_has_preedit (GtkText *)` and `gtk_text_view_has_preedit (GtkTextView *)`, which return `TRUE` when the widget's preedit string is not empty.
-  3. `tif_lookup` gives `TIF_LOOKUP_COMMAND` for the key. A blocked or unbound key returns `FALSE`, so app shortcuts still run.
-- When all are true, it activates the command's action from the table above on the focus widget with `gtk_shortcut_action_activate (action, GTK_SHORTCUT_ACTION_EXCLUSIVE, focus, args)`, and returns `TRUE`.
-- It uses the same process-wide `tif_ctx` as `gtk_text_input_flow_attach`.
+  3. One shortcut in the application's accels model (`gtk_application_accels_get_shortcuts`) matches the event: `gtk_shortcut_trigger_trigger` gives `GDK_KEY_MATCH_EXACT`.
+  4. One shortcut in the shared textinputflow store matches the event the same way, and it is not a blocked key. Matching against the store, not `tif_lookup`, uses GTK's own key matching, so non-Latin layouts work as they do for the widget's controller.
+  5. For a delete command, the widget is editable (`gtk_editable_get_editable` or `gtk_text_view_get_editable`). Otherwise the app shortcut runs, as in stock GTK.
+- When all are true, it calls `gtk_event_controller_key_forward (controller, focus)` and returns its result. The focus widget's own controllers then run in their usual order: the input method first, then the widget's `gtk-textinputflow` controller. It never activates actions itself.
+- A key that no app shortcut matches goes through normal propagation, as before #20.
 
 Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` matching for uppercase keyvals), and a real input method composing text.
 
