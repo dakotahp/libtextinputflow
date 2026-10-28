@@ -295,6 +295,20 @@ That makes 25 entries. In the stub, `tif_fd` returns `-1`, and `tif_reload` and 
 6. A line longer than 1024 bytes, or one with bytes outside printable ASCII, tab and the line ending, is an error line.
 7. A reload builds a new table and then replaces the old one. A lookup never sees half a table.
 
+### Text bindings and app shortcuts
+
+When a text field has focus, the bindings file decides what its keys do, even when the app has its own shortcut on the same key:
+
+| The bindings file says | Text field | App shortcut on the same key |
+|---|---|---|
+| a command | runs the command | does not run |
+| `none` | ignores the key | runs |
+| nothing | toolkit's native behavior | toolkit's native behavior |
+
+Exception: while an input method is composing text (preedit text is showing), the input method gets the key first, as today.
+
+Today the toolkits disagree. In GTK 4, app shortcuts run first, in the window's capture phase (`gtkwindow.c:2965`). In Qt, `QLineEdit` and the other text widgets accept the `ShortcutOverride` event for keys that match their `StandardKey` lists (`qwidgetlinecontrol.cpp:1541`), so the text field runs first. This rule makes GTK match Qt.
+
 ### Key matching
 
 Before lookup, the library normalizes the key: `mods &= TIF_MOD_MASK`, and keysyms `0x41` to `0x5a` (`A` to `Z`) become `0x61` to `0x7a`. Then it needs an exact match on `keysym` and `mods`. So Caps Lock, Num Lock and other modifier bits never stop a match.
@@ -317,6 +331,8 @@ The plugin forwards all 20 virtual `QPlatformTheme` functions to the base theme,
 5. Return the result.
 
 So for each key, the library wins. A blocked key does nothing in text fields. A key the library does not mention keeps Qt's native meaning. Step 3 also covers keys such as `Control+c`: if the library binds it, Copy loses it.
+
+App shortcuts need no extra code in Qt. Text widgets accept `ShortcutOverride` for keys in their `StandardKey` lists, and those lists now come from the library. So a key bound to a command beats an app's `QAction` or `QShortcut`. A blocked key is in no list, so the app shortcut still runs. Both match "Text bindings and app shortcuts".
 
 `StandardKey` to command mapping:
 
@@ -375,6 +391,23 @@ These are the signals and actions GTK's own bindings use, so GTK's movement and 
 
 A key the library does not mention reaches the built-in class bindings as before. If the library has no bindings at all, GTK behaves as stock.
 
+#### Beating app shortcuts (ticket 6)
+
+GTK 4 runs app shortcuts in a window controller named `gtk-application-shortcuts`, in `GTK_PHASE_CAPTURE`. `gtk_window_set_application()` adds it (`gtkwindow.c:2963` to `2967` in 4.24.1). A widget's controller cannot run before it, so the patch adds one more controller to the window:
+
+```c
+void gtk_text_input_flow_attach_window (GtkWindow *window);
+```
+
+- `gtk_window_set_application()` calls it on the line just after it adds the app shortcut controller. GTK runs later-added controllers first, so ours runs before the app's. It runs only for windows that have an application, because only they have app shortcuts.
+- It adds a `GtkEventControllerKey` in `GTK_PHASE_CAPTURE`, static name `gtk-textinputflow-window`.
+- On `key-pressed`, it returns `FALSE` (does nothing) unless all of these are true:
+  1. The window's focus widget (`gtk_root_get_focus`) is a `GtkText` or a `GtkTextView`.
+  2. That widget has no preedit text. The patch adds the private helpers `gtk_text_has_preedit (GtkText *)` and `gtk_text_view_has_preedit (GtkTextView *)`, which return `TRUE` when the widget's preedit string is not empty.
+  3. `tif_lookup` gives `TIF_LOOKUP_COMMAND` for the key. A blocked or unbound key returns `FALSE`, so app shortcuts still run.
+- When all are true, it activates the command's action from the table above on the focus widget with `gtk_shortcut_action_activate (action, GTK_SHORTCUT_ACTION_EXCLUSIVE, focus, args)`, and returns `TRUE`.
+- It uses the same process-wide `tif_ctx` as `gtk_text_input_flow_attach`.
+
 Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` matching for uppercase keyvals), and a real input method composing text.
 
 ## Ticket Breakdown
@@ -384,7 +417,10 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
 - First: ticket 0
 - After ticket 0: #8, #10, #11
 - After #8: #9
+- After #11: ticket 6
 - After #9, #10 and #11: #12
+
+Ticket 6 and #12 are independent of each other.
 
 ### 0. Land the library contract with a stub
 
@@ -462,6 +498,9 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
   - Home, then End: caret 16
 - [ ] `keyBindings(QKeySequence::Copy)` through the plugin equals the base theme's answer, because the stub binds no Copy keys.
 - [ ] With `TEXTINPUTFLOW_QT_BASE_THEME=nonexistent`, apps still start, and text keys still follow the stub table.
+- [ ] App shortcuts follow "Text bindings and app shortcuts". Add `H6_QT_APP` to `spikes/h6/session.sh`, the same way `H6_GTK_APP` works, and a test app `adapters/qt/tests/qt_shortcut_app.py`. It is `spikes/h6/qt_app.py` plus two `QShortcut`s with `Qt::ApplicationShortcut` context, on Alt+Right and on Ctrl+Right, whose slot moves the caret to the end (16). Against the stub table, in both widgets, from caret 0:
+  - Alt+Right (bound to a command): caret 6. The text binding beat the app shortcut.
+  - Home, then Ctrl+Right (blocked): caret 16. The app shortcut ran.
 - [ ] `adapters/qt/README.md` states how to build and turn on the plugin, and the Backspace limit from "Qt plugin rules".
 
 ### 4. #11: GTK 4 patch
@@ -545,18 +584,33 @@ The e2e setup:
 - [ ] `tests/README.md` explains how to run the test, the needed packages, and why steps 2, 3, 7 and 12 differ between the toolkits.
 - [ ] `tests/harness/README.md` documents the `@sh` step and the `text` field.
 
+### 6. GTK 4: text bindings beat app shortcuts
+
+**What:** In stock GTK 4, an app's own shortcut runs before a focused text field sees the key. Extend the GTK patch from #11 so that, in a focused `GtkText` or `GtkTextView`, a key bound to a command runs the command instead, as "Text bindings and app shortcuts" requires. This makes GTK match Qt. Follow "Beating app shortcuts (ticket 6)" in "GTK patch rules".
+**Areas:** `adapters/gtk4/textinputflow.patch`, `adapters/gtk4/tests/`, `adapters/gtk4/README.md`
+**Depends on:** implementation (#11). It extends #11's patch and reuses its shared context and action table.
+**Size:** M
+
+**Acceptance criteria**
+
+- [ ] In the patch, `gtk_text_input_flow_attach_window` is called in `gtk_window_set_application()` on the line just after `gtk_widget_add_controller (GTK_WIDGET (window), priv->application_shortcut_controller);`.
+- [ ] The patch still applies to `gtk-4.24.1` with `patch -p1 --dry-run`, and builds with `-Dtextinputflow=enabled` and with `-Dtextinputflow=disabled`.
+- [ ] A test app `adapters/gtk4/tests/gtk4_accel_app.py` is `spikes/h6/gtk4_app.py` plus one app action whose handler moves the caret to the end (16). It is bound with `Gtk.Application.set_accels_for_action` to `<Alt>Right` and `<Control>Right`. Against the stub table, with `H6_GTK_APP` set to it, in both the entry and the text view, from caret 0:
+  - Alt+Right (bound to a command): caret 5. The text binding beat the app shortcut.
+  - Home, then Ctrl+Right (blocked): caret 16. The app shortcut ran.
+- [ ] The same test app with the `-Dtextinputflow=disabled` build: Alt+Right gives caret 16, so the app shortcut runs, as in stock GTK.
+- [ ] `gtk_text_has_preedit` and `gtk_text_view_has_preedit` return `TRUE` only when the widget's preedit string is not empty. A comment in the patch states that the window controller must not take keys while preedit text shows, so that input methods keep working.
+- [ ] `adapters/gtk4/README.md` describes the window controller and states that input method composition is not covered by an automated test.
+
 ## Test Strategy
 
 - **Library unit tests (ticket 0, #8, #9)** are plain C programs run by `meson test`. They create temp folders and files, and set `HOME` and the XDG variables. Parsing is where implementations most often differ, so every error case in #8 has its own test that checks both the skip and the stderr line. Capture stderr by redirecting `fd 2` to a temp file around the call.
 - **Watching (#9)** is timing-sensitive. Tests wait with `poll()` on `tif_fd` with a 1 s timeout, never with a fixed sleep, and they test the rename-over case, because that is how most editors save.
 - **Adapter checks (#10, #11)** run the existing harness against the stub table. The stub's non-default keys (Alt+arrows, blocked Ctrl+Right) prove the library is in control: a toolkit left at its native bindings fails those steps.
 - **Qt wrapping (#10)** needs the theme dump comparison, because a missed forwarding function shows up only as a wrong font, icon or dialog, which no caret test catches.
-- **GTK disabled build (#11)** keeps the patch honest: with `-Dtextinputflow=disabled`, the patched source must act as stock GTK.
+- **GTK disabled build (#11, ticket 6)** keeps the patch honest: with `-Dtextinputflow=disabled`, the patched source must act as stock GTK.
+- **App shortcut tests (#10, ticket 6)** use test apps whose own shortcut moves the caret to the end (16). The caret position shows which side won: the library's word move (5 or 6), or the app (16).
+- **Input method composition** (ticket 6's preedit check, #11's controller order) has no automated test, because the headless session has no input method. Check it by hand with a real input method before shipping beyond the POC.
 - **End-to-end (#12)** is the POC's proof. It is the only test that combines real files, live reload, and both toolkits.
 - **Harness traps** from the spikes apply to every GUI test: start AT-SPI by hand, keep one idle `wtype` running, use `/usr/bin/python3`, set `GSK_RENDERER=cairo`, set `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`, and pass library paths with `H6_LD_LIBRARY_PATH`. `spikes/h6/README.md` explains each.
 
-## Open Questions
-
-| Question | Why it matters | Owner |
-|---|---|---|
-| Should app-level shortcuts (for example an app that binds Ctrl+A with `gtk_application_set_accels_for_action`) beat text bindings in a focused text field? | GTK runs window-level shortcuts before the text widget, so today an app shortcut wins. The POC does not change this. It becomes a policy choice once apps rely on the library. | Dakotah, after the POC |
