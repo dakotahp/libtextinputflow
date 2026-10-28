@@ -1,0 +1,2 @@
+start:
+Ctrl+Right:-M ctrl -k Right -m ctrl

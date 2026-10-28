@@ -36,6 +36,10 @@ fi
 if [ -n "${H6_QT_THEME:-}" ]; then
   export QT_QPA_PLATFORMTHEME=$H6_QT_THEME
 fi
+# sway has a file capability (cap_sys_nice), so glibc strips LD_LIBRARY_PATH before sway starts.
+if [ -n "${H6_LD_LIBRARY_PATH:-}" ]; then
+  export LD_LIBRARY_PATH=$H6_LD_LIBRARY_PATH
+fi
 
 run_case() {
   local toolkit=$1 widget=$2 app_name=$3
@@ -48,6 +52,7 @@ run_case() {
   if [ -n "${H6_DUMP:-}" ]; then
     sleep 3
     "$PY" "$DIR/probe.py" "$app_name" --dump >&2
+    grep -m1 -oE '/[^ ]*lib(gtk-4|Qt6Gui)\.so[^ ]*' "/proc/$pid/maps" >&2
   fi
   for step in "${STEPS[@]}"; do
     local label=${step%%:*} keys=${step#*:}

@@ -1,0 +1,11 @@
+--- a/gtk/gtktext.c	2026-10-27 18:09:16.765458634 -0700
++++ b/gtk/gtktext.c	2026-10-27 18:09:16.767351653 -0700
+@@ -1442,7 +1442,7 @@
+                     GTK_MOVEMENT_VISUAL_POSITIONS, -1);
+ 
+   add_move_binding (widget_class, GDK_KEY_Right, GDK_CONTROL_MASK,
+-                    GTK_MOVEMENT_WORDS, 1);
++                    GTK_MOVEMENT_DISPLAY_LINE_ENDS, 1);
+ 
+   add_move_binding (widget_class, GDK_KEY_Left, GDK_CONTROL_MASK,
+                     GTK_MOVEMENT_WORDS, -1);
