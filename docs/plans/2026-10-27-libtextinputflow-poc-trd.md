@@ -354,7 +354,7 @@ When a text field has focus, the bindings file decides what its keys do, even wh
 
 Exception: while an input method is composing text (preedit text is showing), the input method gets the key first, as today.
 
-Today the toolkits disagree. In GTK 4, app shortcuts run first, in the window's capture phase (`gtkwindow.c:2965`). In Qt, `QLineEdit` and the other text widgets accept the `ShortcutOverride` event for keys that match their `StandardKey` lists (`qwidgetlinecontrol.cpp:1541`), so the text field runs first. This rule makes GTK match Qt.
+Neither toolkit does this fully today. In GTK 4, app shortcuts run first, in the window's capture phase (`gtkwindow.c:2965`). In Qt, text widgets accept the `ShortcutOverride` event only for a fixed list of `StandardKey`s, and the list differs per widget (`qwidgetlinecontrol.cpp:1541`). So in Qt the text field wins for some commands, such as word moves, and the app wins for others, such as Alt+BackSpace (delete word backward) in `QLineEdit` and `QPlainTextEdit`. #20 makes GTK follow this rule, and #27 makes Qt follow it.
 
 ### Key matching
 
@@ -373,13 +373,15 @@ The plugin forwards all 20 virtual `QPlatformTheme` functions to the base theme,
 
 1. Call `tif_refresh(ctx)`. This is how the plugin picks up file changes. Qt asks the theme on every key press, so no event loop hook is needed.
 2. Start with `base = baseTheme->keyBindings(k)`.
-3. Remove from `base` every key sequence that the library binds to any command, or blocks. Compare single-key sequences only. Multi-key sequences in `base` stay.
+3. If `k` is one of the 21 text-editing `StandardKey`s in the mapping table below, remove from `base` every key sequence that the library binds to any command, or blocks. Compare single-key sequences only. Multi-key sequences in `base` stay. For every other `StandardKey` (such as `Back`, `Forward` or `Copy`), skip this step, so app-level keys keep working everywhere.
 4. If `k` maps to a command in the table below, append the library's keys for that command (`tif_keys_for_command`), converted to `QKeySequence`. Skip duplicates.
 5. Return the result.
 
-So for each key, the library wins. A blocked key does nothing in text fields. A key the library does not mention keeps Qt's native meaning. Step 3 also covers keys such as `Control+c`: if the library binds it, Copy loses it.
+So among the text-editing keys, the library wins. A blocked key does nothing in text fields. A key the library does not mention keeps Qt's native meaning.
 
-App shortcuts need no extra code in Qt. Text widgets accept `ShortcutOverride` for keys in their `StandardKey` lists, and those lists now come from the library. So a key bound to a command beats an app's `QAction` or `QShortcut`. A blocked key is in no list, so the app shortcut still runs. Both match "Text bindings and app shortcuts".
+Step 3 is limited to the text-editing keys because Qt's `StandardKey` lists are global: apps also use them for their own actions. Stripping BackSpace or Alt+Left from `Back` would break "go back" in every Qt app, even outside text fields. Known limit: if the library binds a key that a non-text `StandardKey` also uses (for example `Control+c`, which `Copy` uses), Qt's text widgets may still run that other action first. The POC does not bind such keys.
+
+App shortcuts (`QAction`, `QShortcut`) are handled by #27, not here. Text widgets claim priority over them only for some keys, so #27 adds an application-wide event filter.
 
 `StandardKey` to command mapping:
 
@@ -465,9 +467,10 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
 - After #19: #8, #10, #11
 - After #8: #9
 - After #11: #20
+- After #10: #27
 - After #9, #10 and #11: #12
 
-#20 and #12 are independent of each other.
+#20, #27 and #12 are independent of each other.
 
 ### 0. #19: Land the library contract with a stub
 
@@ -549,6 +552,8 @@ Not covered by tests in the POC: `Shift` plus a letter (`GtkKeyvalTrigger` match
 - [ ] App shortcuts follow "Text bindings and app shortcuts". Add `H6_QT_APP` to `spikes/h6/session.sh`, the same way `H6_GTK_APP` works, and a test app `adapters/qt/tests/qt_shortcut_app.py`. It is `spikes/h6/qt_app.py` plus two `QShortcut`s with `Qt::ApplicationShortcut` context, on Alt+Right and on Ctrl+Right, whose slot moves the caret to the end (16). Against the stub table, in both widgets, from caret 0:
   - Alt+Right (bound to a command): caret 6. The text binding beat the app shortcut.
   - Home, then Ctrl+Right (blocked): caret 16. The app shortcut ran.
+
+  Other keys, such as Alt+BackSpace, may still lose to app shortcuts in this ticket. #27 fixes that.
 - [ ] `adapters/qt/README.md` states how to build and turn on the plugin, and the Backspace limit from "Qt plugin rules".
 
 ### 4. #11: GTK 4 patch
