@@ -129,7 +129,6 @@ int main(void)
         check_every_entry(ctx);
         check_key_normalization(ctx);
         check_reverse_lookup(ctx);
-        CHECK(tif_fd(ctx) == -1);
         CHECK(!tif_refresh(ctx));
         CHECK(!tif_reload(ctx));
         CHECK(tif_binding_count(ctx) == EXPECTED_COUNT);

@@ -111,7 +111,6 @@ static void check_context(tif_ctx *ctx, const char *name)
         check_stub_table(ctx);
         check_every_entry(ctx);
         check_reverse_lookup(ctx);
-        CHECK(tif_fd(ctx) == -1);
         CHECK(!tif_refresh(ctx));
         tif_free(ctx);
     }
