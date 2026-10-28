@@ -1,6 +1,6 @@
 diff -ruN a/gtk/gtktext.c b/gtk/gtktext.c
 --- a/gtk/gtktext.c	2026-10-01 08:47:40.000000000 -0700
-+++ b/gtk/gtktext.c	2026-10-28 07:41:42.257203721 -0700
++++ b/gtk/gtktext.c	2026-10-28 09:18:23.895535314 -0700
 @@ -22,6 +22,7 @@
  #include "config.h"
  
@@ -17,24 +17,44 @@ diff -ruN a/gtk/gtktext.c b/gtk/gtktext.c
    priv->key_controller = gtk_event_controller_key_new ();
    gtk_event_controller_set_propagation_phase (priv->key_controller, GTK_PHASE_TARGET);
    gtk_event_controller_set_static_name (priv->key_controller, "gtk-text-key-controller");
+@@ -7299,6 +7301,14 @@
+   return priv->key_controller;
+ }
+ 
++gboolean
++gtk_text_has_preedit (GtkText *self)
++{
++  GtkTextPrivate *priv = gtk_text_get_instance_private (self);
++
++  return priv->preedit_length > 0;
++}
++
+ void
+ gtk_text_activate_osk (GtkText *self, GdkEvent *event)
+ {
 diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 --- a/gtk/gtktextinputflow.c	1969-12-31 16:00:00.000000000 -0800
-+++ b/gtk/gtktextinputflow.c	2026-10-28 07:59:44.478256051 -0700
-@@ -0,0 +1,173 @@
++++ b/gtk/gtktextinputflow.c	2026-10-28 09:35:46.993195022 -0700
+@@ -0,0 +1,298 @@
 +/* SPDX-License-Identifier: LGPL-2.1-or-later */
 +
 +#include "config.h"
 +
 +#include "gtktextinputflowprivate.h"
 +
++#include "gtkapplicationaccelsprivate.h"
++#include "gtkapplicationprivate.h"
 +#include "gtkeditable.h"
 +#include "gtkenums.h"
 +#include "gtkeventcontroller.h"
++#include "gtkeventcontrollerkey.h"
++#include "gtkroot.h"
 +#include "gtkshortcut.h"
 +#include "gtkshortcutaction.h"
 +#include "gtkshortcutcontroller.h"
 +#include "gtkshortcuttrigger.h"
-+#include "gtktextview.h"
++#include "gtktextprivate.h"
++#include "gtktextviewprivate.h"
 +
 +#include <glib-unix.h>
 +#include <textinputflow.h>
@@ -142,6 +162,8 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  shortcut = gtk_shortcut_new (trigger, action);
 +  if (args)
 +    gtk_shortcut_set_arguments (shortcut, args);
++  g_object_set_data_full (G_OBJECT (shortcut), "gtk-textinputflow-binding",
++                          g_memdup2 (binding, sizeof *binding), g_free);
 +
 +  return shortcut;
 +}
@@ -194,31 +216,167 @@ diff -ruN a/gtk/gtktextinputflow.c b/gtk/gtktextinputflow.c
 +  gtk_event_controller_set_static_name (controller, "gtk-textinputflow");
 +  gtk_widget_add_controller (widget, controller);
 +}
++
++static gboolean
++has_preedit (GtkWidget *focus)
++{
++  if (GTK_IS_TEXT (focus))
++    return gtk_text_has_preedit (GTK_TEXT (focus));
++
++  return gtk_text_view_has_preedit (GTK_TEXT_VIEW (focus));
++}
++
++static gboolean
++is_editable (GtkWidget *focus)
++{
++  if (GTK_IS_TEXT (focus))
++    return gtk_editable_get_editable (GTK_EDITABLE (focus));
++
++  return gtk_text_view_get_editable (GTK_TEXT_VIEW (focus));
++}
++
++static GtkShortcut *
++find_shortcut (GListModel *model,
++               GdkEvent   *event)
++{
++  guint n_items = g_list_model_get_n_items (model);
++
++  for (guint i = 0; i < n_items; i++)
++    {
++      GtkShortcut *shortcut = g_list_model_get_item (model, i);
++
++      if (gtk_shortcut_trigger_trigger (gtk_shortcut_get_trigger (shortcut), event, FALSE) == GDK_KEY_MATCH_EXACT)
++        return shortcut;
++
++      g_object_unref (shortcut);
++    }
++
++  return NULL;
++}
++
++static gboolean
++app_shortcut_matches (GtkApplication *application,
++                      GdkEvent       *event)
++{
++  GtkApplicationAccels *accels = gtk_application_get_application_accels (application);
++  GtkShortcut *shortcut = find_shortcut (gtk_application_accels_get_shortcuts (accels), event);
++
++  if (shortcut == NULL)
++    return FALSE;
++
++  g_object_unref (shortcut);
++  return TRUE;
++}
++
++static gboolean
++binding_takes_key (GtkWidget *focus,
++                   GdkEvent  *event)
++{
++  GtkShortcut *shortcut = find_shortcut (G_LIST_MODEL (shortcuts), event);
++  const tif_binding *binding;
++  gboolean result;
++
++  if (shortcut == NULL)
++    return FALSE;
++
++  binding = g_object_get_data (G_OBJECT (shortcut), "gtk-textinputflow-binding");
++  result = !binding->blocked &&
++           (binding->command.action != TIF_ACTION_DELETE || is_editable (focus));
++  g_object_unref (shortcut);
++
++  return result;
++}
++
++static gboolean
++window_key_pressed (GtkEventControllerKey *controller,
++                    guint                  keyval,
++                    guint                  keycode,
++                    GdkModifierType        state,
++                    gpointer               user_data)
++{
++  GtkWidget *window = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller));
++  GtkApplication *application = gtk_window_get_application (GTK_WINDOW (window));
++  GtkWidget *focus = gtk_root_get_focus (GTK_ROOT (window));
++  GdkEvent *event = gtk_event_controller_get_current_event (GTK_EVENT_CONTROLLER (controller));
++
++  if (application == NULL)
++    return FALSE;
++
++  if (!GTK_IS_TEXT (focus) && !GTK_IS_TEXT_VIEW (focus))
++    return FALSE;
++
++  /* This controller runs before the input method. It must leave keys alone
++   * while preedit text shows, or input method composition breaks. */
++  if (has_preedit (focus))
++    return FALSE;
++
++  if (!app_shortcut_matches (application, event) || !binding_takes_key (focus, event))
++    return FALSE;
++
++  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
++  return gtk_event_controller_key_forward (controller, focus);
++  G_GNUC_END_IGNORE_DEPRECATIONS
++}
++
++void
++gtk_text_input_flow_attach_window (GtkWindow *window)
++{
++  GtkEventController *controller;
++
++  controller = g_object_get_data (G_OBJECT (window), "gtk-textinputflow-window");
++  if (controller)
++    gtk_widget_remove_controller (GTK_WIDGET (window), controller);
++
++  controller = gtk_event_controller_key_new ();
++  gtk_event_controller_set_propagation_phase (controller, GTK_PHASE_CAPTURE);
++  gtk_event_controller_set_static_name (controller, "gtk-textinputflow-window");
++  g_signal_connect (controller, "key-pressed", G_CALLBACK (window_key_pressed), NULL);
++  g_object_set_data (G_OBJECT (window), "gtk-textinputflow-window", controller);
++  gtk_widget_add_controller (GTK_WIDGET (window), controller);
++}
 diff -ruN a/gtk/gtktextinputflowprivate.h b/gtk/gtktextinputflowprivate.h
 --- a/gtk/gtktextinputflowprivate.h	1969-12-31 16:00:00.000000000 -0800
-+++ b/gtk/gtktextinputflowprivate.h	2026-10-28 07:41:48.152164372 -0700
-@@ -0,0 +1,18 @@
++++ b/gtk/gtktextinputflowprivate.h	2026-10-28 09:18:23.901323014 -0700
+@@ -0,0 +1,25 @@
 +/* SPDX-License-Identifier: LGPL-2.1-or-later */
 +
 +#pragma once
 +
 +#include "gtkwidget.h"
++#include "gtkwindow.h"
 +
 +G_BEGIN_DECLS
 +
 +#ifdef HAVE_TEXTINPUTFLOW
 +void gtk_text_input_flow_attach (GtkWidget *widget);
++void gtk_text_input_flow_attach_window (GtkWindow *window);
 +#else
 +static inline void
 +gtk_text_input_flow_attach (GtkWidget *widget)
 +{
 +}
++
++static inline void
++gtk_text_input_flow_attach_window (GtkWindow *window)
++{
++}
 +#endif
 +
 +G_END_DECLS
+diff -ruN a/gtk/gtktextprivate.h b/gtk/gtktextprivate.h
+--- a/gtk/gtktextprivate.h	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/gtktextprivate.h	2026-10-28 09:18:23.892348752 -0700
+@@ -104,6 +104,7 @@
+                                                        int        *y);
+ void                gtk_text_reset_im_context         (GtkText    *entry);
+ GtkEventController *gtk_text_get_key_controller       (GtkText    *entry);
++gboolean            gtk_text_has_preedit              (GtkText    *self);
+ 
+ void                gtk_text_activate_osk             (GtkText    *self,
+                                                        GdkEvent   *event);
 diff -ruN a/gtk/gtktextview.c b/gtk/gtktextview.c
 --- a/gtk/gtktextview.c	2026-10-01 08:47:40.000000000 -0700
-+++ b/gtk/gtktextview.c	2026-10-28 07:41:42.258373559 -0700
++++ b/gtk/gtktextview.c	2026-10-28 09:18:23.897535291 -0700
 @@ -55,6 +55,7 @@
  #include "gtkshortcut.h"
  #include "gtkshortcuttrigger.h"
@@ -235,9 +393,54 @@ diff -ruN a/gtk/gtktextview.c b/gtk/gtktextview.c
    priv->key_controller = gtk_event_controller_key_new ();
    g_signal_connect (priv->key_controller, "key-pressed",
                      G_CALLBACK (gtk_text_view_key_controller_key_pressed),
+@@ -10553,6 +10555,14 @@
+   return text_view->priv->key_controller;
+ }
+ 
++gboolean
++gtk_text_view_has_preedit (GtkTextView *text_view)
++{
++  GtkTextLayout *layout = text_view->priv->layout;
++
++  return layout != NULL && layout->preedit_len > 0;
++}
++
+ static double
+ quantize_value (GtkAdjustment *adjustment,
+                 GtkWidget     *widget)
+diff -ruN a/gtk/gtktextviewprivate.h b/gtk/gtktextviewprivate.h
+--- a/gtk/gtktextviewprivate.h	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/gtktextviewprivate.h	2026-10-28 09:18:23.896458593 -0700
+@@ -31,6 +31,7 @@
+ GtkTextAttributes * gtk_text_view_get_default_attributes (GtkTextView *text_view);
+ 
+ GtkEventController *gtk_text_view_get_key_controller    (GtkTextView *text_view);
++gboolean        gtk_text_view_has_preedit               (GtkTextView *text_view);
+ 
+ GHashTable *    gtk_text_view_get_attributes_run        (GtkTextView *self,
+                                                          int          offset,
+diff -ruN a/gtk/gtkwindow.c b/gtk/gtkwindow.c
+--- a/gtk/gtkwindow.c	2026-10-01 08:47:40.000000000 -0700
++++ b/gtk/gtkwindow.c	2026-10-28 09:18:23.900535257 -0700
+@@ -55,6 +55,7 @@
+ #include "gtkshortcuttrigger.h"
+ #include "gtksizerequest.h"
+ #include "gtksnapshot.h"
++#include "gtktextinputflowprivate.h"
+ #include "gtktypebuiltins.h"
+ #include "gtkwidgetprivate.h"
+ #include "gtkwindowgroup.h"
+@@ -2966,6 +2967,7 @@
+           gtk_event_controller_set_propagation_phase (priv->application_shortcut_controller, GTK_PHASE_CAPTURE);
+           gtk_shortcut_controller_set_scope (GTK_SHORTCUT_CONTROLLER (priv->application_shortcut_controller), GTK_SHORTCUT_SCOPE_GLOBAL);
+           gtk_widget_add_controller (GTK_WIDGET (window), priv->application_shortcut_controller);
++          gtk_text_input_flow_attach_window (window);
+         }
+ 
+       _gtk_widget_update_parent_muxer (GTK_WIDGET (window));
 diff -ruN a/gtk/meson.build b/gtk/meson.build
 --- a/gtk/meson.build	2026-10-01 08:47:40.000000000 -0700
-+++ b/gtk/meson.build	2026-10-28 07:41:42.253477769 -0700
++++ b/gtk/meson.build	2026-10-28 09:17:55.404489933 -0700
 @@ -654,6 +654,10 @@
    gtk_sources += 'gtksearchenginetracker3.c'
  endif
@@ -259,7 +462,7 @@ diff -ruN a/gtk/meson.build b/gtk/meson.build
    gtk_deps += tracker3_dep
 diff -ruN a/meson.build b/meson.build
 --- a/meson.build	2026-10-01 08:47:40.000000000 -0700
-+++ b/meson.build	2026-10-28 07:41:42.253136527 -0700
++++ b/meson.build	2026-10-28 09:17:55.404646476 -0700
 @@ -525,6 +525,9 @@
  colord_dep = dependency('colord', version: '>= 0.1.9', required: get_option('colord'))
  cdata.set('HAVE_COLORD', colord_dep.found())
@@ -272,7 +475,7 @@ diff -ruN a/meson.build b/meson.build
      cdata.set_quoted('ISO_CODES_PREFIX', iso_codes_dep.get_variable(pkgconfig: 'prefix'))
 diff -ruN a/meson.options b/meson.options
 --- a/meson.options	2026-10-01 08:47:40.000000000 -0700
-+++ b/meson.options	2026-10-28 07:41:42.252954128 -0700
++++ b/meson.options	2026-10-28 09:17:55.404773582 -0700
 @@ -82,6 +82,11 @@
         value: 'disabled',
         description : 'Build colord support for the CUPS printing backend')

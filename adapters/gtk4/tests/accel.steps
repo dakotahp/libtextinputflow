@@ -1,0 +1,4 @@
+start:
+Alt+Right:-M alt -k Right -m alt
+Home:-k Home
+Ctrl+Right:-M ctrl -k Right -m ctrl

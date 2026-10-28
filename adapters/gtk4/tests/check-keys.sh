@@ -46,8 +46,8 @@ report() {
 }
 
 run() {
-  local name=$1 gtk_lib=$2 steps=$3
-  H6_ONLY=gtk4 H6_DUMP=1 H6_STEPS="$steps" H6_LD_LIBRARY_PATH="$gtk_lib:$TIF_LIB" \
+  local name=$1 gtk_lib=$2 steps=$3 app=${4:-$ROOT/tests/harness/gtk4_app.py}
+  H6_ONLY=gtk4 H6_DUMP=1 H6_STEPS="$steps" H6_GTK_APP="$app" H6_LD_LIBRARY_PATH="$gtk_lib:$TIF_LIB" \
     XDG_CONFIG_HOME="$STUB" XDG_DATA_DIRS="$STUB:/usr/local/share:/usr/share" \
     "$ROOT/tests/harness/run.sh" "$OUT/$name.jsonl" >/dev/null 2>&1 || true
 }
@@ -82,5 +82,11 @@ run disabled "$DISABLED" "$DIR/stock.steps"
 check_results disabled "$DIR/stock.expected"
 check_loaded disabled "$DISABLED/libgtk-4.so" 2
 check_loaded disabled "libtextinputflow.so" 0
+
+run accel-enabled "$ENABLED" "$DIR/accel.steps" "$DIR/gtk4_accel_app.py"
+check_results accel-enabled "$DIR/accel.expected"
+
+run accel-disabled "$DISABLED" "$DIR/accel.steps" "$DIR/gtk4_accel_app.py"
+check_results accel-disabled "$DIR/accel-stock.expected"
 
 exit "$status"
