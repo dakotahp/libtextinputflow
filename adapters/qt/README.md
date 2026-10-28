@@ -50,11 +50,13 @@ The plugin adds one event filter to the application object. On a `ShortcutOverri
 
 - The receiver is the focus object, and it is a `QLineEdit`, `QTextEdit`, `QPlainTextEdit`, `QQuickTextInput` or `QQuickTextEdit` (or a subclass).
 - The bindings files bind the key to a command.
-- The command is not a delete command on read-only text. On read-only text, delete keys stay with the app shortcut.
+- The widget can run the command. Delete commands need editable text. Moves and select-all need keyboard selection, where the widget has that setting: `textInteractionFlags` in `QTextEdit` and `QPlainTextEdit`, and `selectByKeyboard` in `QQuickTextEdit`. A read-only `QLineEdit` or `QQuickTextInput` still moves its caret. So in a read-only log view, bound keys stay with the app shortcut.
 
-It never changes any other event, and it never stops an event. So a blocked key, an unbound key, or a key outside a text field still runs the app shortcut. The text widget then runs the command through the standard keys that the plugin supplies.
+When it accepts the event, the filter also stops it, because the Qt Quick text items would ignore it again. It never changes any other event. So a blocked key, an unbound key, or a key outside a text field still runs the app shortcut. The text widget then runs the command through the standard keys that the plugin supplies.
 
 The plugin installs the filter when Qt creates the theme. If the application object does not exist yet, it installs it on the first key bindings request.
+
+A spin box (`QAbstractSpinBox`) and an editable `QComboBox` keep the focus themselves, not their inner `QLineEdit`. So in those fields, the filter does nothing, and Qt's own rules still decide.
 
 Input method composition (preedit text) is not covered by an automated test, because the headless test session has no input method. Check it by hand with a real input method.
 
@@ -62,7 +64,7 @@ Input method composition (preedit text) is not covered by an automated test, bec
 
 `meson test -C build qt_keybindings` loads the plugin without a display and checks its key bindings against `tests/fixtures/stub`.
 
-`meson test -C build qt_shortcut_filter` checks which `ShortcutOverride` events the filter accepts. It needs Qt Widgets.
+`meson test -C build qt_shortcut_filter qt_shortcut_filter_quick` checks which `ShortcutOverride` events the filter accepts, in widgets and in Qt Quick text items. Each test builds only when Qt Widgets or Qt Quick is found.
 
 Two more checks start a headless sway with a private D-Bus session. They do not work inside a sandbox. Read `tests/harness/README.md` first.
 

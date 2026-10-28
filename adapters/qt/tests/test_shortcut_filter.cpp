@@ -15,13 +15,16 @@ class Probe : public Base
 {
 public:
     using Base::Base;
+    bool reached = false;
     bool acceptedOnArrival = false;
 
 protected:
     bool event(QEvent *event) override
     {
-        if (event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress)
+        if (event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) {
+            reached = true;
             acceptedOnArrival = event->isAccepted();
+        }
         return Base::event(event);
     }
 };
@@ -32,11 +35,15 @@ static void expectClaimed(const char *name, Probe<Widget> &receiver, QEvent::Typ
 {
     QKeyEvent event(type, key.key(), key.keyboardModifiers());
     event.ignore();
+    receiver.reached = false;
     QCoreApplication::sendEvent(&receiver, &event);
-    if (receiver.acceptedOnArrival == claimed)
+    const bool filterClaimed = !receiver.reached && event.isAccepted();
+    const bool untouched = receiver.reached && !receiver.acceptedOnArrival;
+    if (claimed ? filterClaimed : untouched)
         return;
-    QTextStream(stderr) << name << ": accepted before the widget saw it: " << receiver.acceptedOnArrival
-                        << ", want " << claimed << "\n";
+    QTextStream(stderr) << name << ": reached the widget: " << receiver.reached
+                        << ", accepted on arrival: " << receiver.acceptedOnArrival
+                        << ", accepted after: " << event.isAccepted() << ", want claimed " << claimed << "\n";
     ++failures;
 }
 
@@ -62,12 +69,20 @@ int main(int argc, char **argv)
     auto *otherLineEdit = new Probe<QLineEdit>(text);
     auto *readOnlyLineEdit = new Probe<QLineEdit>(text);
     auto *plainTextEdit = new Probe<QPlainTextEdit>(text);
+    auto *readOnlyPlainTextEdit = new Probe<QPlainTextEdit>(text);
+    auto *keyboardSelectablePlainTextEdit = new Probe<QPlainTextEdit>(text);
     auto *textEdit = new Probe<QTextEdit>(text);
     auto *button = new Probe<QPushButton>(QStringLiteral("button"));
     readOnlyLineEdit->setReadOnly(true);
-    for (QWidget *widget :
-         std::initializer_list<QWidget *>{lineEdit, otherLineEdit, readOnlyLineEdit, plainTextEdit, textEdit, button})
+    readOnlyPlainTextEdit->setReadOnly(true);
+    keyboardSelectablePlainTextEdit->setReadOnly(true);
+    keyboardSelectablePlainTextEdit->setTextInteractionFlags(Qt::TextSelectableByMouse |
+                                                             Qt::TextSelectableByKeyboard);
+    for (QWidget *widget : std::initializer_list<QWidget *>{lineEdit, otherLineEdit, readOnlyLineEdit, plainTextEdit,
+                                                            readOnlyPlainTextEdit, keyboardSelectablePlainTextEdit,
+                                                            textEdit, button})
         layout->addWidget(widget);
+    readOnlyPlainTextEdit->setFocusPolicy(Qt::StrongFocus);
     button->setFocusPolicy(Qt::StrongFocus);
     window.show();
     window.activateWindow();
@@ -95,6 +110,16 @@ int main(int argc, char **argv)
 
     focus(*plainTextEdit);
     expectClaimed("QPlainTextEdit Alt+Backspace", *plainTextEdit, QEvent::ShortcutOverride, altBackspace, true);
+
+    focus(*readOnlyPlainTextEdit);
+    expectClaimed("read-only QPlainTextEdit Alt+Right", *readOnlyPlainTextEdit, QEvent::ShortcutOverride, altRight,
+                  false);
+
+    focus(*keyboardSelectablePlainTextEdit);
+    expectClaimed("keyboard-selectable QPlainTextEdit Alt+Right", *keyboardSelectablePlainTextEdit,
+                  QEvent::ShortcutOverride, altRight, true);
+    expectClaimed("keyboard-selectable QPlainTextEdit Alt+Backspace", *keyboardSelectablePlainTextEdit,
+                  QEvent::ShortcutOverride, altBackspace, false);
 
     focus(*textEdit);
     expectClaimed("QTextEdit Alt+Backspace", *textEdit, QEvent::ShortcutOverride, altBackspace, true);

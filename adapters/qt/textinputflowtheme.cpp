@@ -8,6 +8,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QVariant>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -123,6 +124,21 @@ static bool isTextWidget(const QObject *object)
     return false;
 }
 
+static bool canRun(const QObject *textWidget, const tif_command &command)
+{
+    const bool editable = !textWidget->property("readOnly").toBool();
+    if (command.action == TIF_ACTION_DELETE)
+        return editable;
+
+    const QVariant flags = textWidget->property("textInteractionFlags");
+    if (flags.isValid())
+        return flags.value<Qt::TextInteractionFlags>() & (Qt::TextSelectableByKeyboard | Qt::TextEditable);
+    const QVariant selectByKeyboard = textWidget->property("selectByKeyboard");
+    if (selectByKeyboard.isValid())
+        return editable || selectByKeyboard.toBool();
+    return true;
+}
+
 class ShortcutOverrideFilter : public QObject
 {
 public:
@@ -139,12 +155,12 @@ public:
             return false;
         tif_refresh(m_ctx);
         tif_command command;
-        if (tif_lookup(m_ctx, *key, &command) != TIF_LOOKUP_COMMAND)
+        if (tif_lookup(m_ctx, *key, &command) != TIF_LOOKUP_COMMAND || !canRun(receiver, command))
             return false;
-        if (command.action == TIF_ACTION_DELETE && receiver->property("readOnly").toBool())
-            return false;
+        // The Qt Quick text items ignore a ShortcutOverride they do not claim themselves, so the
+        // receiver must not see the event after it is accepted here.
         event->accept();
-        return false;
+        return true;
     }
 
 private:
