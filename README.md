@@ -71,8 +71,8 @@ Other approaches exist. For example, a background program could watch the keyboa
 
 | | Status |
 |---|---|
-| Qt apps | Work, through an add-on (a Qt "platform theme" plugin). Qt itself is not changed |
-| GTK 4 apps | Work, with a small patch to GTK |
+| Qt apps | Supported, through an add-on (a Qt "platform theme" plugin). Qt itself is not changed |
+| GTK 4 apps | Supported, with a small patch to GTK |
 | Live changes | An edit to the bindings file reaches open apps at once |
 | App shortcuts | In a text box, the file's keys beat an app's own shortcuts, in both toolkits |
 | Default keys | The normal Linux keys: Ctrl + arrows for words, Home and End for lines |
