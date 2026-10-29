@@ -6,22 +6,15 @@ This is a **proof of concept**. It works for two of the main families of Linux a
 
 ## The problem
 
-When you type in a text box, a few keys move the text cursor (the blinking line, also called the *caret*) instead of typing letters:
+**On Linux, the keys that edit text do not work the same way in every app, and you cannot change them in one place.**
+
+These are the keys that move the text cursor (the blinking line, also called the *caret*) or delete text, instead of typing a letter. For example:
 
 - Ctrl + Right arrow jumps one word to the right.
 - Home and End jump to the start and end of the line.
 - Ctrl + Backspace deletes the whole previous word.
 
-You use these keys all day, in every app.
-
-### On a Mac, they are the same everywhere
-
-On macOS, one system file lists what these keys do. Every text box in every app reads that same file. So:
-
-- The keys work the same way in every app.
-- You can change a key once, in one file, and every app follows.
-
-### On Linux, every app decides for itself
+### Why Linux has this problem
 
 Linux apps are built with different **toolkits**. A toolkit is the set of building blocks an app uses for its windows, buttons and text boxes. The two biggest are **GTK** (most GNOME apps) and **Qt** (most KDE apps). Browsers, terminals and code editors often bring their own.
 
@@ -31,6 +24,10 @@ Each toolkit has its own built-in list of text keys, and nothing makes the lists
 - **You cannot change the keys in one place.** GTK 4 apps do not let you change their text keys at all. Qt apps allow it only through an add-on. Every other toolkit has its own method, or none.
 
 Because the keys already disagree, changing them per toolkit only adds more confusion. Consistency has to come first.
+
+### How macOS avoids it
+
+On macOS, one system file lists what these keys do, and every text box in every app reads that same file. So the keys work the same way everywhere, and you can change a key once and every app follows. This project brings that model to Linux.
 
 ## The idea
 
