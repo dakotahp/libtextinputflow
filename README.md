@@ -139,7 +139,7 @@ This is still a proof of concept, so trying it means building it. The steps assu
 - [`docs/poc-brief.md`](docs/poc-brief.md): the goals and the decisions behind them.
 - [`docs/plans/2026-10-27-libtextinputflow-poc-trd.md`](docs/plans/2026-10-27-libtextinputflow-poc-trd.md): the full technical spec.
 - [`AGENTS.md`](AGENTS.md): layout, build and test commands, and project rules.
-- [`spikes/`](spikes): the six early experiments that showed the idea could work.
+- [`spikes/`](spikes/README.md): findings from the six early experiments that showed the idea could work.
 - [`adapters/qt/README.md`](adapters/qt/README.md) and [`adapters/gtk4/README.md`](adapters/gtk4/README.md): how each toolkit connector works.
 - [`tests/README.md`](tests/README.md): how the tests work.
 
