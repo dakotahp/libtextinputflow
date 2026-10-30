@@ -2,7 +2,7 @@
 
 This harness sends keys to GTK 4 and Qt text fields and reads the caret, the selection and the text through AT-SPI2. The end-to-end test (`tests/e2e/`) and the adapter checks (`adapters/*/tests/check-keys.sh`) use it.
 
-It started as spike H6. `spikes/h6/` keeps the spike and its results.
+It started as spike H6. `spikes/h6/README.md` keeps the spike's findings.
 
 The tests run in a headless sway inside a private D-Bus session. No window opens on the desktop, and no key reaches it. This does not work inside a sandbox.
 

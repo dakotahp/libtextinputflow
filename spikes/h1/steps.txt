@@ -1,7 +1,0 @@
-start:
-Ctrl+Right:-M ctrl -k Right -m ctrl
-Alt+Right:-M alt -k Right -m alt
-Alt+Right:-M alt -k Right -m alt
-Alt+Left:-M alt -k Left -m alt
-Shift+Alt+Right:-M alt -M shift -k Right -m shift -m alt
-End:-k End

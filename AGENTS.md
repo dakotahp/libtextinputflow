@@ -25,7 +25,7 @@ The POC covers GTK 4 and Qt 6, on Arch Linux with Hyprland (Omarchy). It is done
 | `tests/harness/` | Headless GUI test harness: GTK and Qt test apps, an AT-SPI2 probe, a headless sway runner |
 | `tests/e2e/` | End-to-end test that proves the POC |
 | `tests/fixtures/stub/` | The 25-entry bindings fixture that the adapter checks use |
-| `spikes/` | Record of the six spikes. Do not make new code depend on it |
+| `spikes/` | Findings of the six spikes, as READMEs only. The spike code was removed; `spikes/README.md` says where it lives now |
 
 ## Build and test
 
