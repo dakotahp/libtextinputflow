@@ -71,14 +71,14 @@ Other approaches exist. For example, a background program could watch the keyboa
 
 | | Status |
 |---|---|
-| Qt apps | Supported, through an add-on (a Qt "platform theme" plugin). Qt itself is not changed |
+| Qt apps | Supported, through an add-on (a Qt "platform theme" plugin). Qt itself is not changed. Covers Qt Widgets and Qt Quick (QML) apps |
 | GTK 4 apps | Supported, with a small patch to GTK |
 | Live changes | An edit to the bindings file reaches open apps at once |
 | App shortcuts | In a text box, the file's keys beat an app's own shortcuts, in both toolkits |
 | Default keys | The normal Linux keys: Ctrl + arrows for words, Home and End for lines |
 | Chromium, Electron, Firefox, terminals, GTK 3 apps | Not covered yet |
 
-An automated test sends real key presses to GTK and Qt text boxes and checks where the cursor lands. All 56 checks pass. Nothing touches your desktop while the test runs.
+An automated test sends real key presses to GTK, Qt and Qt Quick (QML) text boxes and checks where the cursor lands. All 84 checks pass. Nothing touches your desktop while the test runs.
 
 ### Known differences
 

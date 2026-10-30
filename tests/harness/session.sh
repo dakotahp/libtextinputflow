@@ -83,3 +83,6 @@ run_case gtk4 textview tif-gtk4 "$PY" "$GTK_APP" textview
 QT_APP=${H6_QT_APP:-$DIR/qt_app.py}
 run_case qt lineedit tif-qt "$PY" "$QT_APP" entry
 run_case qt plaintextedit tif-qt "$PY" "$QT_APP" textview
+QTQUICK_APP=${H6_QTQUICK_APP:-$DIR/qtquick_app.py}
+run_case qtquick textfield tif-qtquick "$PY" "$QTQUICK_APP" entry
+run_case qtquick textarea tif-qtquick "$PY" "$QTQUICK_APP" textview
