@@ -1,0 +1,41 @@
+pkgbase=libtextinputflow
+pkgname=(libtextinputflow libtextinputflow-qt6)
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Shared text-editing key bindings for Linux toolkits'
+arch=('x86_64' 'aarch64')
+url='https://github.com/dakotahp/libtextinputflow'
+license=('MIT')
+makedepends=('git' 'meson' 'qt6-base')
+checkdepends=('qt6-declarative')
+source=("git+https://github.com/dakotahp/libtextinputflow.git#tag=v$pkgver")
+sha256sums=('SKIP')
+
+build() {
+  arch-meson libtextinputflow build -Dqt=enabled
+  meson compile -C build
+}
+
+check() {
+  meson test -C build --print-errorlogs
+}
+
+package_libtextinputflow() {
+  depends=('glibc')
+  provides=('libtextinputflow.so')
+
+  meson install -C build --destdir "$pkgdir" --tags runtime,devel
+  install -Dm644 libtextinputflow/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+}
+
+package_libtextinputflow-qt6() {
+  pkgdesc='Qt 6 platform theme plugin that applies libtextinputflow key bindings to Qt apps'
+  # The plugin uses Qt private API, so it only works with the Qt release it was built against.
+  local qt_version
+  qt_version=$(pkg-config --modversion Qt6Core)
+  depends=("libtextinputflow=$pkgver" "qt6-base=$qt_version" 'gcc-libs' 'glibc')
+  optdepends=('gtk3: for the gtk3 base theme (TEXTINPUTFLOW_QT_BASE_THEME=gtk3)')
+
+  meson install -C build --destdir "$pkgdir" --tags qt
+  install -Dm644 libtextinputflow/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+}

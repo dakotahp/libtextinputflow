@@ -92,6 +92,11 @@ static bool load(tif_ctx *ctx, tif_table *out)
     return true;
 }
 
+const char *tif_version(void)
+{
+    return TIF_VERSION;
+}
+
 static tif_ctx *new_ctx(void)
 {
     tif_ctx *ctx = calloc(1, sizeof *ctx);

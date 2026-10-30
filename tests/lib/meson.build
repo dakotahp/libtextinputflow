@@ -7,6 +7,16 @@ foreach name : ['test_null', 'test_header_c99', 'test_parse', 'test_merge', 'tes
   )
 endforeach
 
+test(
+  'test_version',
+  executable(
+    'test_version',
+    'test_version.c',
+    c_args: test_c_args + ['-DTIF_EXPECTED_VERSION="@0@"'.format(meson.project_version())],
+    dependencies: textinputflow_dep,
+  ),
+)
+
 foreach name : ['test_default_file', 'test_stub_fixture']
   test(
     name,

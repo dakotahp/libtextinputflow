@@ -134,6 +134,28 @@ This is still a proof of concept, so trying it means building it. The steps assu
 
 3. For GTK 4, build the patched GTK (about 2 minutes) and run a GTK app against it. [`adapters/gtk4/README.md`](adapters/gtk4/README.md) has the steps.
 
+### Install on Arch
+
+[`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) builds the library and the Qt add-on from a release:
+
+```sh
+cd packaging/arch && makepkg -si
+```
+
+Then turn the Qt add-on on for your session, for example with a file in `~/.config/environment.d/`:
+
+```
+QT_QPA_PLATFORMTHEME=textinputflow
+```
+
+The add-on keeps the look of the `gtk3` Qt theme. To wrap another theme, set `TEXTINPUTFLOW_QT_BASE_THEME` to its name.
+
+## For app builders
+
+- [`docs/api.md`](docs/api.md): how to use the library from a toolkit or an app, the rules every adapter keeps, and the version promises.
+- [`docs/bindings-format.md`](docs/bindings-format.md): the full spec of the bindings file.
+- [`CHANGELOG.md`](CHANGELOG.md): what changed in each release.
+
 ## For contributors
 
 - [`docs/poc-brief.md`](docs/poc-brief.md): the goals and the decisions behind them.

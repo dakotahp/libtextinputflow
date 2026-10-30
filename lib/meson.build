@@ -6,6 +6,7 @@ libtextinputflow = library(
   'table.c',
   'watch.c',
   include_directories: inc,
+  c_args: ['-DTIF_VERSION="@0@"'.format(meson.project_version())],
   gnu_symbol_visibility: 'hidden',
   version: meson.project_version(),
   soversion: '0',

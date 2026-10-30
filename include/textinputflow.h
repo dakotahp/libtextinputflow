@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#define TIF_API_VERSION 0
+#define TIF_API_VERSION 1
 
 typedef enum {
     TIF_ACTION_MOVE = 1,
@@ -64,6 +64,8 @@ typedef enum {
 } tif_lookup_result;
 
 typedef struct tif_ctx tif_ctx;
+
+const char *tif_version(void);
 
 tif_ctx *tif_new(void);
 tif_ctx *tif_new_for_paths(const char *distro_file, const char *user_file);

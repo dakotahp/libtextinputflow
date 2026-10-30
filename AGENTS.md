@@ -19,6 +19,9 @@ The POC covers GTK 4 and Qt 6, on Arch Linux with Hyprland (Omarchy). It is done
 | `include/textinputflow.h` | Public C API. It is the contract between the library and the adapters |
 | `lib/` | The C99 library: `textinputflow.c` (API), `parse.c` (file format), `table.c` (merged bindings), `paths.c` (XDG file locations), `watch.c` (inotify live reload) |
 | `data/bindings` | The default distro bindings file (normal Linux GUI keys) |
+| `docs/api.md`, `docs/bindings-format.md` | The guide for app builders and the file format spec. Both are part of the contract |
+| `packaging/arch/PKGBUILD` | Builds the `libtextinputflow` and `libtextinputflow-qt6` Arch packages from a release tag |
+| `CHANGELOG.md` | One section per release |
 | `adapters/qt/` | Qt platform theme plugin `textinputflow`. It wraps the base theme and replaces only the 21 text-editing `StandardKey`s |
 | `adapters/gtk4/` | `textinputflow.patch` for GTK 4.24.1, and `build-gtk.sh` to download, patch and build GTK |
 | `tests/lib/` | Library unit tests, run by `meson test` |
@@ -66,6 +69,7 @@ The harness starts a headless sway inside a private D-Bus session. Nothing reach
 ## Rules
 
 - **The public header is a contract.** Do not change `include/textinputflow.h` without the user's agreement. Both adapters build against it.
+- **Keep the docs with the contract.** A change to the API, the file format or the adapter rules also updates `docs/api.md` or `docs/bindings-format.md`, and `CHANGELOG.md`. Follow the version rules in `docs/api.md`.
 - **The bindings files decide text keys, and the library wins.** In a focused text field, a key bound to a command beats the toolkit's built-in binding and the app's own shortcut. A key set to `none` does nothing in text fields and leaves app shortcuts alone. On read-only text, delete commands leave app shortcuts alone. Keys the files do not mention keep the toolkit's behavior.
 - **Use the toolkit's own commands.** The GTK patch emits GTK's existing signals and actions, and the Qt plugin only changes `StandardKey` lists. Do not add new movement code.
 - **The Qt plugin uses Qt private API** (`QPlatformTheme`, `QPlatformThemeFactory`). It must be rebuilt for each Qt release.
