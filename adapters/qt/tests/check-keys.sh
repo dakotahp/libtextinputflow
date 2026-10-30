@@ -42,13 +42,19 @@ check() {
   fi
 }
 
+SHORTCUT_APPS=(H6_QT_APP="$DIR/qt_shortcut_app.py" H6_QTQUICK_APP="$DIR/qtquick_shortcut_app.py")
+
 check keys "$DIR/keys.expected" H6_STEPS="$DIR/keys.steps"
 check keys-nonexistent-base "$DIR/keys.expected" H6_STEPS="$DIR/keys.steps" TEXTINPUTFLOW_QT_BASE_THEME=nonexistent
-check shortcuts "$DIR/shortcuts.expected" H6_STEPS="$DIR/shortcuts.steps" H6_QT_APP="$DIR/qt_shortcut_app.py"
+check shortcuts "$DIR/shortcuts.expected" H6_STEPS="$DIR/shortcuts.steps" "${SHORTCUT_APPS[@]}"
 check shortcuts-document-end "$DIR/shortcuts-document-end.expected" H6_STEPS="$DIR/document-end.steps" \
-  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_ONLY=qt-plaintextedit
+  "${SHORTCUT_APPS[@]}" H6_ONLY=qt-plaintextedit
+check shortcuts-document-end-quick "$DIR/shortcuts-document-end-quick.expected" H6_STEPS="$DIR/document-end.steps" \
+  "${SHORTCUT_APPS[@]}" H6_ONLY=qtquick-textarea
 check shortcuts-read-only "$DIR/shortcuts-read-only.expected" H6_STEPS="$DIR/alt-backspace.steps" \
-  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_ONLY=qt-lineedit TIF_QT_READ_ONLY=1
+  "${SHORTCUT_APPS[@]}" H6_ONLY=qt-lineedit TIF_QT_READ_ONLY=1
+check shortcuts-read-only-quick "$DIR/shortcuts-read-only-quick.expected" H6_STEPS="$DIR/alt-backspace.steps" \
+  "${SHORTCUT_APPS[@]}" H6_ONLY=qtquick-textfield TIF_QT_READ_ONLY=1
 check shortcuts-plugin-off "$DIR/shortcuts-plugin-off.expected" H6_STEPS="$DIR/alt-backspace.steps" \
-  H6_QT_APP="$DIR/qt_shortcut_app.py" H6_QT_THEME=
+  "${SHORTCUT_APPS[@]}" H6_QT_THEME=
 exit "$status"

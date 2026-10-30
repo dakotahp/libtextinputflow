@@ -12,9 +12,9 @@ The tests run in a headless sway inside a private D-Bus session. No window opens
 ./run.sh [results.jsonl]
 ```
 
-Needs: `sway`, `wtype`, `at-spi2-core`, `python-gobject`, `python-pyqt6`, `gtk4`.
+Needs: `sway`, `wtype`, `at-spi2-core`, `python-gobject`, `python-pyqt6`, `qt6-declarative`, `gtk4`.
 
-The script runs four cases, one per widget: `gtk4-entry` (`GtkEntry`), `gtk4-textview` (`GtkTextView`), `qt-lineedit` (`QLineEdit`) and `qt-plaintextedit` (`QPlainTextEdit`). Each test app shows the text `alpha beta gamma` with the caret at 0. Each case runs every step, then reads the field.
+The script runs six cases, one per widget: `gtk4-entry` (`GtkEntry`), `gtk4-textview` (`GtkTextView`), `qt-lineedit` (`QLineEdit`), `qt-plaintextedit` (`QPlainTextEdit`), `qtquick-textfield` (Qt Quick Controls `TextField`) and `qtquick-textarea` (Qt Quick Controls `TextArea`). Each test app shows the text `alpha beta gamma` with the caret at 0. Each case runs every step, then reads the field.
 
 ## Output
 
@@ -45,9 +45,10 @@ If the probe cannot read the field, `result` is `{"error": "..."}` instead.
 
 ## Switches
 
-- `H6_ONLY=gtk4-entry` runs the cases whose name starts with this value. `H6_ONLY=gtk4` runs both GTK cases.
+- `H6_ONLY=gtk4-entry` runs the cases whose name starts with this value. `H6_ONLY=gtk4` runs both GTK cases. `H6_ONLY=qt` runs all four Qt cases, Qt Quick included; use `qt-` for Qt Widgets only.
 - `H6_GTK_APP=app.py` replaces the GTK test app. It must take `entry` or `textview` as its argument.
 - `H6_QT_APP=app.py` replaces the Qt test app. It must take `entry` or `textview` as its argument, and name itself `tif-qt`.
+- `H6_QTQUICK_APP=app.py` replaces the Qt Quick test app. It must take `entry` or `textview` as its argument, and name itself `tif-qtquick`.
 - `H6_LD_LIBRARY_PATH=dir` sets `LD_LIBRARY_PATH` for the apps, for example to load a locally built GTK. A plain `LD_LIBRARY_PATH` does not work: see "Traps".
 - `H6_QT_THEME=name` sets `QT_QPA_PLATFORMTHEME` for the Qt apps. Set `QT_PLUGIN_PATH` too, for a theme outside the system plugin folder.
 - `H6_DUMP=1` writes each app's accessibility tree to `results.jsonl.log`. It also logs which `libgtk-4` or `libQt6Gui`, and which `libtextinputflow`, each app loaded.

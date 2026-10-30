@@ -6,7 +6,7 @@ Guidance for coding agents working in this repository.
 
 `libtextinputflow` is a proof of concept for macOS-style text-editing key bindings on Linux. One bindings file decides what text-editing keys (word moves, line ends, word deletes) do in every app. Each toolkit asks the library what a key means, then runs its own version of that command.
 
-The POC covers GTK 4 and Qt 6, on Arch Linux with Hyprland (Omarchy). It is done: `tests/e2e/run.sh` passes 56 of 56.
+The POC covers GTK 4 and Qt 6, on Arch Linux with Hyprland (Omarchy). It is done: `tests/e2e/run.sh` passes 84 of 84.
 
 - Spec of record: `docs/plans/2026-10-27-libtextinputflow-poc-trd.md`. Read the sections that touch your work before you change behavior.
 - Background and decisions: `docs/poc-brief.md`.
@@ -45,10 +45,10 @@ adapters/qt/tests/check-theme.sh build              # Qt theme values match the 
 adapters/qt/tests/check-keys.sh build               # Qt caret keys and app shortcuts
 adapters/gtk4/build-gtk.sh <work dir> build [enabled|disabled]   # patched GTK, about 2 minutes the first time
 adapters/gtk4/tests/check-keys.sh <work dir> build  # GTK caret keys and app shortcuts
-tests/e2e/run.sh [build [build/gtk-work]]           # the POC proof, 56 checks
+tests/e2e/run.sh [build [build/gtk-work]]           # the POC proof, 84 checks
 ```
 
-Run the narrowest test that covers your change. Run `tests/e2e/run.sh` before a PR that changes the library, either adapter, or the harness. It must stay at 56 of 56.
+Run the narrowest test that covers your change. Run `tests/e2e/run.sh` before a PR that changes the library, either adapter, or the harness. It must stay at 84 of 84.
 
 ## GUI tests: traps
 

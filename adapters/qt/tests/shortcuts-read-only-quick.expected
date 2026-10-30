@@ -1,0 +1,3 @@
+textfield start 0 - "alpha beta gamma"
+textfield End 16 - "alpha beta gamma"
+textfield Alt+BackSpace 3 - "alpha beta gamma"
