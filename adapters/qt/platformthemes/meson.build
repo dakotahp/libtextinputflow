@@ -6,4 +6,7 @@ textinputflow_qt = shared_module(
   dependencies: [qt6_dep, textinputflow_dep],
   gnu_symbol_visibility: 'hidden',
   override_options: ['cpp_std=c++17'],
+  install: true,
+  install_dir: qt_plugin_install_dir / 'platformthemes',
+  install_tag: 'qt',
 )
