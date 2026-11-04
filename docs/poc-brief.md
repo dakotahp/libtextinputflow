@@ -134,4 +134,4 @@ Run H6 first. Every later test depends on it.
 
 ## Background
 
-The early design notes are private and are not in this repo. The design this POC tests is in the [POC TRD](plans/2026-10-27-libtextinputflow-poc-trd.md).
+The design this POC tests is in the [POC TRD](plans/2026-10-27-libtextinputflow-poc-trd.md).
