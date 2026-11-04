@@ -2,7 +2,7 @@
 
 One settings file for the keys you use to edit text, shared by every app on a Linux desktop.
 
-This is a **proof of concept**. It works for two of the main families of Linux apps (GTK 4 and Qt), and it has not been released.
+This is a **proof of concept** at version 0.1.0. It works for two of the main families of Linux apps (GTK 4 and Qt).
 
 ## The problem
 
@@ -117,7 +117,34 @@ The actions are:
 
 ## Try it
 
-This is still a proof of concept, so trying it means building it. The steps assume Arch Linux.
+There are no prebuilt packages, so you build from source either way. The steps assume Arch Linux. First get the code:
+
+```sh
+git clone https://github.com/dakotahp/libtextinputflow.git
+cd libtextinputflow
+```
+
+For Qt apps, choose one way. Install the packages to use the add-on in your session, or run from a build folder to try it in one app. GTK 4 apps need a patched GTK in both cases.
+
+### Install on Arch
+
+[`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) builds the library and the Qt add-on from the `v0.1.0` tag, then installs them as two packages:
+
+```sh
+cd packaging/arch && makepkg -si
+```
+
+Then turn the Qt add-on on for your session, for example with a file in `~/.config/environment.d/`:
+
+```
+QT_QPA_PLATFORMTHEME=textinputflow
+```
+
+The add-on keeps the look of the `gtk3` Qt theme. To wrap another theme, set `TEXTINPUTFLOW_QT_BASE_THEME` to its name.
+
+### Run from a build folder
+
+This installs nothing.
 
 1. Build the library and the Qt add-on:
 
@@ -132,23 +159,9 @@ This is still a proof of concept, so trying it means building it. The steps assu
    QT_PLUGIN_PATH=$PWD/build/adapters/qt QT_QPA_PLATFORMTHEME=textinputflow <your Qt app>
    ```
 
-3. For GTK 4, build the patched GTK (about 2 minutes) and run a GTK app against it. [`adapters/gtk4/README.md`](adapters/gtk4/README.md) has the steps.
+### GTK 4 apps
 
-### Install on Arch
-
-[`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) builds the library and the Qt add-on from a release:
-
-```sh
-cd packaging/arch && makepkg -si
-```
-
-Then turn the Qt add-on on for your session, for example with a file in `~/.config/environment.d/`:
-
-```
-QT_QPA_PLATFORMTHEME=textinputflow
-```
-
-The add-on keeps the look of the `gtk3` Qt theme. To wrap another theme, set `TEXTINPUTFLOW_QT_BASE_THEME` to its name.
+The packages do not include GTK. Build the patched GTK (about 2 minutes) and run a GTK app against it. [`adapters/gtk4/README.md`](adapters/gtk4/README.md) has the steps.
 
 ## For app builders
 
