@@ -28,7 +28,7 @@ The default bindings match what GTK and Qt already do. So the test uses a non-de
 | Language | C99, with a C header as the stable contract | GTK (C) and the Qt plugin (C++) link it with no extra toolchain. The inside can move to Rust later without a change to consumers. |
 | Command names | Neutral names: action, unit, direction, extend | GTK names carry GTK habits. Neutral names let any toolkit or app map them. |
 | Name | `libtextinputflow`, C prefix `tif_` | |
-| Upstream intent | Local use first, then an Omarchy proposal | Patches do not need upstream polish yet. |
+| Upstream intent | Proof of concept first, then an Omarchy proposal | Patches do not need upstream polish yet. |
 
 ## Out of scope for the POC
 
@@ -134,7 +134,4 @@ Run H6 first. Every later test depends on it.
 
 ## Background
 
-The design notes live in the author's Obsidian vault, under `1_Projects/Linux Text Caret Layer/`:
-
-- `Linux Text Caret Layer`: the problem, the macOS model, and three possible approaches.
-- `Design A - Shared Text Command Library`: the full design this POC tests.
+The design this POC tests is in the [POC TRD](plans/2026-10-27-libtextinputflow-poc-trd.md).
