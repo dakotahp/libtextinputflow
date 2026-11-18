@@ -140,6 +140,14 @@ Then turn the Qt add-on on for your session, for example with a file in `~/.conf
 QT_QPA_PLATFORMTHEME=textinputflow
 ```
 
+On Omarchy, the Hyprland config already sets `QT_QPA_PLATFORMTHEME=gtk3` for the session. Set the value there instead. Add this line at the end of `~/.config/hypr/hyprland.lua`, then log out and back in:
+
+```lua
+hl.env("QT_QPA_PLATFORMTHEME", "textinputflow")
+```
+
+`echo $QT_QPA_PLATFORMTHEME` then prints `textinputflow`.
+
 The add-on keeps the look of the `gtk3` Qt theme. To wrap another theme, set `TEXTINPUTFLOW_QT_BASE_THEME` to its name.
 
 ### Run from a build folder
